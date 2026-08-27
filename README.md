@@ -1,10 +1,10 @@
 # OpsRAG
 
-OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation loads local documents, creates deterministic chunks, indexes normalized BGE embeddings in Qdrant, supports independent dense and BM25 retrieval, and generates a source-grounded answer through a provider-neutral LLM interface.
+OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation loads local documents, creates deterministic chunks, indexes normalized BGE embeddings in Qdrant, supports dense, BM25, and RRF-based hybrid retrieval, and generates a source-grounded answer through a provider-neutral LLM interface.
 
 ## Current scope
 
-Completed through **Milestone 5 — BM25 Sparse Retrieval**:
+Completed through **Milestone 6 — Hybrid Retrieval**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -13,12 +13,14 @@ Completed through **Milestone 5 — BM25 Sparse Retrieval**:
 - configurable Sentence Transformers embedding service
 - Qdrant collection creation, safe explicit recreation, and dense search
 - deterministic in-memory BM25 indexing and lexical search for exact technical terms
+- Reciprocal Rank Fusion over configurable dense and sparse candidate lists
+- deterministic chunk-ID deduplication and normalized hybrid retrieval results
 - grounded prompt with source identifiers
 - provider-neutral LLM protocol and OpenAI Responses API adapter
 - `POST /api/v1/ask` returning answer, sources, retrieval metadata, and a retrieval-derived confidence heuristic
 - mock-based tests that do not require an API key or paid model call
 
-Hybrid retrieval, reranking, LangGraph, RAGAS, Langfuse, Streamlit, and full application containers are later milestones.
+Reranking, LangGraph, RAGAS, Langfuse, Streamlit, and full application containers are later milestones.
 
 ## Local setup
 
@@ -49,6 +51,14 @@ BM25 search uses the same deterministic chunk artifact and does not require Qdra
 ```bash
 python scripts/sparse_search.py "pg_hba.conf authentication"
 ```
+
+Hybrid search requires the processed chunks and an indexed Qdrant collection:
+
+```bash
+python scripts/hybrid_search.py "HTTP 503 Qdrant"
+```
+
+The basic RAG API still consumes dense retrieval directly. The hybrid candidate list remains independently testable until the reranking milestone connects it to final context selection.
 
 Collection replacement is never implicit. Use `python scripts/index.py --recreate` only when you intentionally want to delete and rebuild the configured collection.
 
