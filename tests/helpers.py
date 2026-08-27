@@ -1,5 +1,7 @@
 """Shared factories used by unit and integration tests."""
 
+from typing import Literal
+
 from app.ingestion.models import Chunk
 from app.retrieval.models import RetrievedChunk, RetrievedChunkMetadata
 
@@ -36,6 +38,7 @@ def make_retrieved_chunk(
     section: str = "Troubleshooting",
     text: str = "Check the service logs and verify the configured port.",
     score: float = 0.82,
+    retrieval_method: Literal["dense", "bm25", "hybrid"] = "dense",
 ) -> RetrievedChunk:
     return RetrievedChunk(
         text=text,
@@ -51,5 +54,5 @@ def make_retrieved_chunk(
             document_type="markdown",
         ),
         score=score,
+        retrieval_method=retrieval_method,
     )
-

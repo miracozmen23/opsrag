@@ -36,6 +36,8 @@ class Settings(BaseSettings):
     qdrant_batch_size: int = Field(default=64, ge=1)
     top_k_dense: int = Field(default=10, ge=1)
     top_k_sparse: int = Field(default=10, ge=1)
+    top_k_hybrid: int = Field(default=10, ge=1)
+    rrf_k: int = Field(default=60, ge=1)
 
     llm_provider: str = "openai"
     llm_model: str = ""

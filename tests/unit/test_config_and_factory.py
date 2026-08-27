@@ -18,9 +18,10 @@ def test_overlap_must_be_smaller_than_chunk_size() -> None:
         Settings(_env_file=None, chunk_size_tokens=100, chunk_overlap_tokens=100)
 
 
-def test_sparse_top_k_must_be_positive() -> None:
-    with pytest.raises(ValidationError, match="top_k_sparse"):
-        Settings(_env_file=None, top_k_sparse=0)
+@pytest.mark.parametrize("field_name", ["top_k_sparse", "top_k_hybrid", "rrf_k"])
+def test_retrieval_counts_must_be_positive(field_name: str) -> None:
+    with pytest.raises(ValidationError, match=field_name):
+        Settings(_env_file=None, **{field_name: 0})
 
 
 def test_llm_factory_requires_model_and_key() -> None:
