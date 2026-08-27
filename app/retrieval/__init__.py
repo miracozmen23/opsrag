@@ -11,3 +11,6 @@ __all__ = [
     "QdrantVectorStore",
     "reciprocal_rank_fusion",
 ]
+from app.retrieval.reranker import CrossEncoderReranker, RerankingRetriever
+
+__all__ = ["CrossEncoderReranker", "RerankingRetriever"]

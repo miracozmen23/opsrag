@@ -23,7 +23,7 @@ class RAGMetadata(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     retrieved_chunks: int = Field(ge=0)
-    retrieval_method: Literal["dense"] = "dense"
+    retrieval_method: Literal["dense", "hybrid_reranked"] = "dense"
 
 
 class RAGResult(BaseModel):
@@ -35,4 +35,3 @@ class RAGResult(BaseModel):
     sources: list[RAGSource]
     retrieval_confidence: float = Field(ge=0.0, le=1.0)
     metadata: RAGMetadata
-

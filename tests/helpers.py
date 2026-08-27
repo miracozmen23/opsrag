@@ -38,6 +38,7 @@ def make_retrieved_chunk(
     section: str = "Troubleshooting",
     text: str = "Check the service logs and verify the configured port.",
     score: float = 0.82,
+    rerank_score: float | None = None,
     retrieval_method: Literal["dense", "bm25", "hybrid"] = "dense",
 ) -> RetrievedChunk:
     return RetrievedChunk(
@@ -54,5 +55,6 @@ def make_retrieved_chunk(
             document_type="markdown",
         ),
         score=score,
+        rerank_score=rerank_score,
         retrieval_method=retrieval_method,
     )

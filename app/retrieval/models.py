@@ -32,4 +32,5 @@ class RetrievedChunk(BaseModel):
     text: str = Field(min_length=1)
     metadata: RetrievedChunkMetadata
     score: float
+    rerank_score: float | None = None
     retrieval_method: Literal["dense", "bm25", "hybrid"] = "dense"

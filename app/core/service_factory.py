@@ -2,8 +2,9 @@
 
 from qdrant_client import QdrantClient
 
-from app.core.config import Settings
+from app.core.config import Settings, resolve_project_path
 from app.embeddings.embedding_service import SentenceTransformerEmbeddingService
+from app.retrieval.reranker import CrossEncoderReranker
 
 
 def create_embedding_service(settings: Settings) -> SentenceTransformerEmbeddingService:
@@ -13,6 +14,18 @@ def create_embedding_service(settings: Settings) -> SentenceTransformerEmbedding
         settings.embedding_model,
         device=settings.embedding_device,
         batch_size=settings.embedding_batch_size,
+        cache_folder=resolve_project_path(settings.model_cache_dir),
+    )
+
+
+def create_reranker_service(settings: Settings) -> CrossEncoderReranker:
+    """Create the configured lazy cross-encoder reranker."""
+
+    return CrossEncoderReranker(
+        settings.reranker_model,
+        device=settings.reranker_device,
+        batch_size=settings.reranker_batch_size,
+        cache_folder=resolve_project_path(settings.model_cache_dir),
     )
 
 
@@ -29,4 +42,3 @@ def create_qdrant_client(settings: Settings) -> QdrantClient:
         api_key=api_key,
         timeout=settings.qdrant_timeout_seconds,
     )
-

@@ -69,6 +69,50 @@ def test_retrieval_confidence_is_clamped(score: float, expected: float) -> None:
     assert result.retrieval_confidence == expected
 
 
+def test_pipeline_uses_rerank_score_and_reports_hybrid_reranking() -> None:
+    chunk = make_retrieved_chunk(
+        score=0.03,
+        rerank_score=2.0,
+        retrieval_method="hybrid",
+    )
+    pipeline = RAGPipeline(
+        FakeRetriever([chunk]),
+        FakeLanguageModel(),
+        retrieval_method="hybrid_reranked",
+    )
+
+    result = pipeline.answer("question")
+
+    assert result.sources[0].score == 0.8808
+    assert result.retrieval_confidence == 0.8808
+    assert result.metadata.retrieval_method == "hybrid_reranked"
+
+
+@pytest.mark.parametrize(
+    ("logit", "expected"),
+    [(1000.0, 1.0), (-1000.0, 0.0)],
+)
+def test_rerank_confidence_sigmoid_is_numerically_stable(
+    logit: float,
+    expected: float,
+) -> None:
+    result = RAGPipeline(
+        FakeRetriever([make_retrieved_chunk(rerank_score=logit)]),
+        FakeLanguageModel(),
+        retrieval_method="hybrid_reranked",
+    ).answer("question")
+    assert result.retrieval_confidence == expected
+
+
+def test_empty_reranked_result_preserves_retrieval_method() -> None:
+    result = RAGPipeline(
+        FakeRetriever([]),
+        FakeLanguageModel(),
+        retrieval_method="hybrid_reranked",
+    ).answer("question")
+    assert result.metadata.retrieval_method == "hybrid_reranked"
+
+
 def test_retrieval_failures_become_pipeline_errors() -> None:
     class FailingRetriever:
         def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
@@ -88,4 +132,3 @@ def test_generation_failures_become_pipeline_errors() -> None:
             FakeRetriever([make_retrieved_chunk()]),
             FailingLLM(),
         ).answer("question")
-

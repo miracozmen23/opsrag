@@ -1,8 +1,9 @@
-"""Dense retrieval followed by source-grounded answer generation."""
+"""Retrieval followed by source-grounded answer generation."""
 
 import logging
+import math
 from time import perf_counter
-from typing import Protocol
+from typing import Literal, Protocol
 
 from app.llm.base import LanguageModel
 from app.rag.models import RAGMetadata, RAGResult, RAGSource
@@ -30,7 +31,7 @@ class RAGPipelineError(RuntimeError):
 
 
 class RAGPipeline:
-    """First end-to-end RAG pipeline using dense context only."""
+    """Provider-neutral retrieval and grounded generation pipeline."""
 
     def __init__(
         self,
@@ -38,12 +39,14 @@ class RAGPipeline:
         llm: LanguageModel,
         *,
         top_k: int = 10,
+        retrieval_method: Literal["dense", "hybrid_reranked"] = "dense",
     ) -> None:
         if top_k < 1:
             raise ValueError("RAG top_k must be at least 1.")
         self.retriever = retriever
         self.llm = llm
         self.top_k = top_k
+        self.retrieval_method = retrieval_method
 
     def answer(self, question: str) -> RAGResult:
         normalized_question = question.strip()
@@ -68,7 +71,10 @@ class RAGPipeline:
                 answer=INSUFFICIENT_CONTEXT_ANSWER,
                 sources=[],
                 retrieval_confidence=0.0,
-                metadata=RAGMetadata(retrieved_chunks=0),
+                metadata=RAGMetadata(
+                    retrieved_chunks=0,
+                    retrieval_method=self.retrieval_method,
+                ),
             )
 
         sources = _build_sources(chunks)
@@ -97,7 +103,10 @@ class RAGPipeline:
             answer=answer,
             sources=sources,
             retrieval_confidence=_retrieval_confidence(chunks),
-            metadata=RAGMetadata(retrieved_chunks=len(chunks)),
+            metadata=RAGMetadata(
+                retrieved_chunks=len(chunks),
+                retrieval_method=self.retrieval_method,
+            ),
         )
 
 
@@ -107,16 +116,30 @@ def _build_sources(chunks: list[RetrievedChunk]) -> list[RAGSource]:
             source_id=f"S{index}",
             document=chunk.metadata.source,
             section=chunk.metadata.section,
-            score=round(float(chunk.score), 4),
+            score=round(_relevance_score(chunk), 4),
             chunk_id=chunk.metadata.chunk_id,
         )
         for index, chunk in enumerate(chunks, start=1)
     ]
 
 
+def _relevance_score(chunk: RetrievedChunk) -> float:
+    if chunk.rerank_score is None:
+        return float(chunk.score)
+    return _sigmoid(float(chunk.rerank_score))
+
+
+def _sigmoid(value: float) -> float:
+    """Map a cross-encoder logit to a stable 0-1 relevance heuristic."""
+
+    if value >= 0:
+        return 1.0 / (1.0 + math.exp(-value))
+    exp_value = math.exp(value)
+    return exp_value / (1.0 + exp_value)
+
+
 def _retrieval_confidence(chunks: list[RetrievedChunk]) -> float:
-    """Clamp the top cosine score; this is a heuristic, not a probability."""
+    """Clamp the best final relevance score; this is not a probability."""
 
-    top_score = max(float(chunk.score) for chunk in chunks)
+    top_score = max(_relevance_score(chunk) for chunk in chunks)
     return round(max(0.0, min(1.0, top_score)), 4)
-

@@ -1,10 +1,19 @@
 """Environment-backed application settings."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def resolve_project_path(path: Path) -> Path:
+    """Resolve relative runtime paths against the repository, not the shell cwd."""
+
+    return path if path.is_absolute() else (PROJECT_ROOT / path).resolve()
 
 
 class Settings(BaseSettings):
@@ -25,9 +34,14 @@ class Settings(BaseSettings):
     chunk_overlap_tokens: int = Field(default=75, ge=0)
     tokenizer_strategy: str = "regex_v1"
 
+    model_cache_dir: Path = Path(".cache/huggingface")
     embedding_model: str = "BAAI/bge-small-en-v1.5"
     embedding_device: str = "cpu"
     embedding_batch_size: int = Field(default=32, ge=1)
+
+    reranker_model: str = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    reranker_device: str = "cpu"
+    reranker_batch_size: int = Field(default=16, ge=1)
 
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: SecretStr | None = None
@@ -37,7 +51,10 @@ class Settings(BaseSettings):
     top_k_dense: int = Field(default=10, ge=1)
     top_k_sparse: int = Field(default=10, ge=1)
     top_k_hybrid: int = Field(default=10, ge=1)
+    top_k_rerank: int = Field(default=5, ge=1)
     rrf_k: int = Field(default=60, ge=1)
+
+    processed_chunks_path: Path = Path("data/processed/chunks.jsonl")
 
     llm_provider: str = "openai"
     llm_model: str = ""

@@ -3,6 +3,7 @@
 import logging
 import math
 from collections.abc import Sequence
+from pathlib import Path
 from time import perf_counter
 from typing import Any, Protocol
 
@@ -36,6 +37,7 @@ class SentenceTransformerEmbeddingService:
         *,
         device: str = "cpu",
         batch_size: int = 32,
+        cache_folder: str | Path | None = None,
         model: Any | None = None,
     ) -> None:
         if not model_name.strip():
@@ -45,6 +47,7 @@ class SentenceTransformerEmbeddingService:
         self._model_name = model_name
         self.device = device
         self.batch_size = batch_size
+        self.cache_folder = Path(cache_folder) if cache_folder is not None else None
         self._model = model
 
     @property
@@ -129,12 +132,22 @@ class SentenceTransformerEmbeddingService:
         if self._model is None:
             from sentence_transformers import SentenceTransformer
 
+            if self.cache_folder is not None:
+                self.cache_folder.mkdir(parents=True, exist_ok=True)
             logger.info(
                 "embedding_model_loading model=%s device=%s",
                 self.model_name,
                 self.device,
             )
-            self._model = SentenceTransformer(self.model_name, device=self.device)
+            self._model = SentenceTransformer(
+                self.model_name,
+                device=self.device,
+                cache_folder=(
+                    str(self.cache_folder.resolve())
+                    if self.cache_folder is not None
+                    else None
+                ),
+            )
         return self._model
 
 
