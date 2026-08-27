@@ -73,26 +73,28 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--judge-model",
         default=None,
-        help="OpenAI judge model; defaults to RAGAS_JUDGE_MODEL then LLM_MODEL.",
+        help="Judge model; defaults to RAGAS_JUDGE_MODEL then LLM_MODEL.",
     )
     parser.add_argument(
         "--confirm-paid-run",
         action="store_true",
-        help="Acknowledge that generation and RAGAS judging make paid API calls.",
+        help="Acknowledge paid calls when either answer or judge provider is OpenAI.",
     )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    if not args.confirm_paid_run:
+    settings = Settings(_env_file=PROJECT_ROOT / ".env")
+    judge_provider = settings.ragas_judge_provider or settings.llm_provider
+    uses_paid_openai = "openai" in {settings.llm_provider, judge_provider}
+    if uses_paid_openai and not args.confirm_paid_run:
         print(
             "Refusing to start paid model calls without --confirm-paid-run.",
             file=sys.stderr,
         )
         return 2
 
-    settings = Settings(_env_file=PROJECT_ROOT / ".env")
     configure_logging(settings.log_level)
     input_path = args.input.resolve()
     source_dir = args.sources.resolve()
@@ -122,8 +124,10 @@ def main(argv: list[str] | None = None) -> int:
             else ""
         )
         scorer = create_ragas_scorer(
+            provider=judge_provider,
             api_key=api_key,
             judge_model=judge_model,
+            ollama_base_url=settings.ollama_base_url,
             embedding_model=settings.embedding_model,
             embedding_device=settings.embedding_device,
             embedding_batch_size=settings.embedding_batch_size,
@@ -131,6 +135,7 @@ def main(argv: list[str] | None = None) -> int:
             ragas_cache_dir=resolve_project_path(settings.ragas_cache_dir),
             timeout_seconds=settings.ragas_timeout_seconds,
             max_retries=settings.ragas_max_retries,
+            max_output_tokens=settings.ragas_max_output_tokens,
         )
         results = asyncio.run(
             run_benchmark(
@@ -138,7 +143,9 @@ def main(argv: list[str] | None = None) -> int:
                 pipelines=pipelines,
                 scorer=scorer,
                 dataset_path=input_path,
+                answer_provider=settings.llm_provider,
                 answer_model=settings.llm_model,
+                judge_provider=judge_provider,
             )
         )
         write_benchmark_results(results, output_path)
@@ -160,11 +167,14 @@ def _summary(results: BenchmarkResults, output_path: Path) -> dict[str, Any]:
     return {
         "results_file": str(output_path),
         "dataset_cases": results.dataset_case_count,
+        "answer_provider": results.answer_provider,
         "answer_model": results.answer_model,
+        "judge_provider": results.judge_provider,
         "judge_model": results.judge_model,
         "ragas_version": results.ragas_version,
         "configurations": {
             result.configuration: {
+                "application_failures": result.application_failures,
                 "expected_source_hit_rate": result.expected_source_hit_rate,
                 "answerability_accuracy": result.answerability_accuracy,
                 "mean_latency_ms": result.mean_latency_ms,

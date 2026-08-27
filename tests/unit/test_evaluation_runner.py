@@ -15,12 +15,14 @@ from app.evaluation.results import (
     MetricOutcome,
 )
 from app.evaluation.runner import (
+    APPLICATION_FAILURE_RESPONSE,
     create_evaluation_pipelines,
     has_metric_failures,
     run_benchmark,
     sha256_file,
     write_benchmark_results,
 )
+from app.rag.pipeline import RAGPipelineError
 from app.rag.models import RAGExecution, RAGMetadata, RAGResult, RAGSource
 from app.rag.prompts import INSUFFICIENT_CONTEXT_ANSWER
 from tests.helpers import make_retrieved_chunk
@@ -134,7 +136,9 @@ def test_runner_evaluates_every_case_and_summarizes_real_scores(
             pipelines={"dense": pipeline},
             scorer=FakeScorer(),
             dataset_path=dataset_path,
+            answer_provider="ollama",
             answer_model="answer-model",
+            judge_provider="ollama",
             generated_at=datetime(2026, 8, 27, tzinfo=timezone.utc),
         )
     )
@@ -142,6 +146,8 @@ def test_runner_evaluates_every_case_and_summarizes_real_scores(
     assert pipeline.calls == ["Answerable?", "Unavailable?"]
     assert results.dataset_sha256 == sha256_file(dataset_path)
     assert results.generated_at.isoformat() == "2026-08-27T00:00:00+00:00"
+    assert results.answer_provider == "ollama"
+    assert results.judge_provider == "ollama"
     configuration = results.configurations[0]
     assert configuration.expected_source_hit_rate == 1.0
     assert configuration.answerability_accuracy == 1.0
@@ -157,7 +163,49 @@ def test_runner_evaluates_every_case_and_summarizes_real_scores(
         output_path.read_text(encoding="utf-8")
     )
     assert stored == results
-    assert json.loads(output_path.read_text(encoding="utf-8"))["schema_version"] == "1.0"
+    assert json.loads(output_path.read_text(encoding="utf-8"))["schema_version"] == "1.2"
+
+
+def test_runner_records_pipeline_failure_and_continues(tmp_path: Path) -> None:
+    dataset_path = tmp_path / "questions.jsonl"
+    dataset_path.write_text("reviewed benchmark\n", encoding="utf-8")
+    failed_case = EvaluationCase(
+        case_id="eval_001",
+        question="Broken answer?",
+        expected_answer="Expected.",
+        expected_source="guide.md",
+        expected_section="Section",
+        category="semantic",
+        should_answer=True,
+    )
+
+    class FailingPipeline:
+        def answer_with_trace(self, question: str) -> RAGExecution:
+            raise RAGPipelineError("Answer source attribution failed.")
+
+    results = asyncio.run(
+        run_benchmark(
+            dataset=EvaluationDataset(cases=(failed_case,)),
+            pipelines={"dense": FailingPipeline()},
+            scorer=FakeScorer(),
+            dataset_path=dataset_path,
+            answer_provider="ollama",
+            answer_model="answer-model",
+            judge_provider="ollama",
+            generated_at=datetime(2026, 8, 27, tzinfo=timezone.utc),
+        )
+    )
+
+    configuration = results.configurations[0]
+    case = configuration.cases[0]
+    assert configuration.application_failures == 1
+    assert case.application_status == "failed"
+    assert case.response == APPLICATION_FAILURE_RESPONSE
+    assert case.expected_source_retrieved is False
+    assert case.answerability_correct is False
+    assert case.metrics["faithfulness"].status == "failed"
+    assert "source attribution" in case.application_error.lower()
+    assert has_metric_failures(results)
 
 
 def test_pipeline_factory_uses_same_top_k_for_selected_configurations() -> None:

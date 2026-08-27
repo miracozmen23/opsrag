@@ -83,6 +83,30 @@ def test_pipeline_returns_safe_answer_without_context_and_skips_llm() -> None:
     assert llm.calls == []
 
 
+@pytest.mark.parametrize(
+    "answer",
+    [
+        INSUFFICIENT_CONTEXT_ANSWER,
+        (
+            "The retrieved material covers other systems.\n\n"
+            "The knowledge base does not contain enough information to answer "
+            "this question."
+        ),
+    ],
+)
+def test_pipeline_normalizes_safe_insufficient_context_response(answer: str) -> None:
+    result = RAGPipeline(
+        FakeRetriever([make_retrieved_chunk()]),
+        FakeLanguageModel(answer),
+    ).answer("Unknown topic")
+
+    assert result.answer == INSUFFICIENT_CONTEXT_ANSWER
+    assert result.sources == []
+    assert result.retrieval_confidence == 0.0
+    assert result.metadata.retrieved_chunks == 1
+    assert result.metadata.cited_sources == 0
+
+
 @pytest.mark.parametrize(("score", "expected"), [(1.4, 1.0), (-0.2, 0.0)])
 def test_retrieval_confidence_is_clamped(score: float, expected: float) -> None:
     result = RAGPipeline(

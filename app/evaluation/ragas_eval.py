@@ -84,8 +84,10 @@ class RagasScorer:
 
 def create_ragas_scorer(
     *,
+    provider: str,
     api_key: str,
     judge_model: str,
+    ollama_base_url: str,
     embedding_model: str,
     embedding_device: str,
     embedding_batch_size: int,
@@ -93,10 +95,16 @@ def create_ragas_scorer(
     ragas_cache_dir: Path,
     timeout_seconds: float,
     max_retries: int,
+    max_output_tokens: int,
 ) -> RagasScorer:
-    """Construct OpenAI-judged metrics with local Hugging Face embeddings."""
+    """Construct OpenAI-compatible metrics with local Hugging Face embeddings."""
 
-    if not api_key.strip():
+    normalized_provider = provider.strip().lower()
+    if normalized_provider not in {"openai", "ollama"}:
+        raise RagasConfigurationError(
+            f"Unsupported RAGAS judge provider '{provider}'."
+        )
+    if normalized_provider == "openai" and not api_key.strip():
         raise RagasConfigurationError("An OpenAI API key is required for RAGAS.")
     if not judge_model.strip():
         raise RagasConfigurationError("A RAGAS judge model must be configured.")
@@ -104,6 +112,10 @@ def create_ragas_scorer(
         raise RagasConfigurationError("RAGAS timeout must be positive.")
     if max_retries < 0:
         raise RagasConfigurationError("RAGAS max retries cannot be negative.")
+    if max_output_tokens < 64:
+        raise RagasConfigurationError(
+            "RAGAS max output tokens must be at least 64."
+        )
 
     os.environ.setdefault("RAGAS_DO_NOT_TRACK", "true")
     _install_optional_vertexai_compatibility()
@@ -128,16 +140,28 @@ def create_ragas_scorer(
     model_cache_dir.mkdir(parents=True, exist_ok=True)
     ragas_cache_dir.mkdir(parents=True, exist_ok=True)
     cache = DiskCacheBackend(cache_dir=str(ragas_cache_dir.resolve()))
-    client = AsyncOpenAI(
-        api_key=api_key,
-        timeout=timeout_seconds,
-        max_retries=max_retries,
-    )
+    client_kwargs: dict[str, Any] = {
+        "api_key": api_key if normalized_provider == "openai" else "ollama",
+        "timeout": timeout_seconds,
+        "max_retries": max_retries,
+    }
+    if normalized_provider == "ollama":
+        if not ollama_base_url.strip():
+            raise RagasConfigurationError("An Ollama base URL is required for RAGAS.")
+        client_kwargs["base_url"] = f"{ollama_base_url.rstrip('/')}/v1"
+    client = AsyncOpenAI(**client_kwargs)
+    local_model_args: dict[str, Any] = {}
+    if normalized_provider == "ollama":
+        local_model_args = {
+            "max_tokens": max_output_tokens,
+            "reasoning_effort": "none",
+        }
     judge_llm = llm_factory(
         judge_model.strip(),
         provider="openai",
         client=client,
         cache=cache,
+        **local_model_args,
     )
     embeddings = HuggingFaceEmbeddings(
         model=embedding_model,

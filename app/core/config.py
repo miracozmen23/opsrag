@@ -61,11 +61,14 @@ class Settings(BaseSettings):
     llm_api_key: SecretStr | None = None
     llm_timeout_seconds: float = Field(default=30.0, gt=0)
     llm_max_output_tokens: int = Field(default=800, ge=1)
+    ollama_base_url: str = "http://localhost:11434"
 
+    ragas_judge_provider: str = ""
     ragas_judge_model: str = ""
     ragas_cache_dir: Path = Path(".cache/ragas")
     ragas_timeout_seconds: float = Field(default=60.0, gt=0)
     ragas_max_retries: int = Field(default=3, ge=0)
+    ragas_max_output_tokens: int = Field(default=512, ge=64)
 
     @field_validator("qdrant_api_key", "llm_api_key", mode="before")
     @classmethod
@@ -76,11 +79,11 @@ class Settings(BaseSettings):
             return None
         return value
 
-    @field_validator("llm_provider")
+    @field_validator("llm_provider", "ragas_judge_provider")
     @classmethod
-    def normalize_provider(cls, value: str) -> str:
+    def normalize_provider(cls, value: str, info: Any) -> str:
         normalized = value.strip().lower()
-        if not normalized:
+        if not normalized and info.field_name == "llm_provider":
             raise ValueError("LLM provider cannot be empty.")
         return normalized
 

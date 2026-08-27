@@ -15,6 +15,7 @@ from app.rag.prompts import (
     GROUNDING_INSTRUCTIONS,
     INSUFFICIENT_CONTEXT_ANSWER,
     build_grounded_input,
+    is_insufficient_context_answer,
 )
 from app.retrieval.models import RetrievedChunk
 
@@ -102,10 +103,14 @@ class RAGPipeline:
         except Exception as exc:
             raise RAGPipelineError("Answer generation failed.") from exc
         generation_latency_ms = (perf_counter() - generation_started_at) * 1000
-        try:
-            sources = select_cited_sources(answer, source_contexts)
-        except SourceAttributionError as exc:
-            raise RAGPipelineError("Answer source attribution failed.") from exc
+        if is_insufficient_context_answer(answer):
+            answer = INSUFFICIENT_CONTEXT_ANSWER
+            sources = []
+        else:
+            try:
+                sources = select_cited_sources(answer, source_contexts)
+            except SourceAttributionError as exc:
+                raise RAGPipelineError("Answer source attribution failed.") from exc
 
         logger.info(
             "rag_completed provider=%s model=%s retrieved_chunks=%d "
@@ -123,7 +128,9 @@ class RAGPipeline:
             result=RAGResult(
                 answer=answer,
                 sources=sources,
-                retrieval_confidence=_retrieval_confidence(sources),
+                retrieval_confidence=(
+                    _retrieval_confidence(sources) if sources else 0.0
+                ),
                 metadata=RAGMetadata(
                     retrieved_chunks=len(chunks),
                     cited_sources=len(sources),

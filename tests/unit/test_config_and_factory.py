@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from app.core.config import PROJECT_ROOT, Settings
 from app.core.service_factory import create_embedding_service, create_reranker_service
 from app.llm.factory import LLMConfigurationError, create_llm_service
+from app.llm.ollama_chat import OllamaChatLanguageModel
 
 
 def test_blank_optional_secrets_become_none() -> None:
@@ -46,6 +47,22 @@ def test_llm_factory_rejects_unknown_provider() -> None:
     )
     with pytest.raises(LLMConfigurationError, match="Unsupported"):
         create_llm_service(settings)
+
+
+def test_llm_factory_builds_ollama_without_api_key() -> None:
+    settings = Settings(
+        _env_file=None,
+        llm_provider=" OLLAMA ",
+        llm_model="qwen3:4b",
+        llm_api_key=None,
+        ollama_base_url="http://localhost:11435",
+    )
+
+    model = create_llm_service(settings)
+
+    assert isinstance(model, OllamaChatLanguageModel)
+    assert model.provider_name == "ollama"
+    assert model.model_name == "qwen3:4b"
 
 
 def test_model_factories_share_configured_cache_directory(tmp_path) -> None:

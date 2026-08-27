@@ -7,7 +7,11 @@ from types import SimpleNamespace
 import pytest
 
 from app.evaluation import ragas_eval
-from app.evaluation.ragas_eval import RagasScorer
+from app.evaluation.ragas_eval import (
+    RagasConfigurationError,
+    RagasScorer,
+    create_ragas_scorer,
+)
 
 
 class FakeMetric:
@@ -94,3 +98,43 @@ def test_vertexai_compatibility_does_not_hide_nested_import_failures(
     with pytest.raises(ModuleNotFoundError) as exc_info:
         ragas_eval._install_optional_vertexai_compatibility()
     assert exc_info.value.name == "google.cloud"
+
+
+def test_ragas_factory_rejects_unknown_provider_before_importing_optional_stack(
+    tmp_path,
+) -> None:
+    with pytest.raises(RagasConfigurationError, match="Unsupported"):
+        create_ragas_scorer(
+            provider="unknown",
+            api_key="",
+            judge_model="judge",
+            ollama_base_url="http://localhost:11434",
+            embedding_model="embedder",
+            embedding_device="cpu",
+            embedding_batch_size=1,
+            model_cache_dir=tmp_path / "models",
+            ragas_cache_dir=tmp_path / "ragas",
+            timeout_seconds=1,
+            max_retries=0,
+            max_output_tokens=512,
+        )
+
+
+def test_ragas_factory_requires_openai_key_before_importing_optional_stack(
+    tmp_path,
+) -> None:
+    with pytest.raises(RagasConfigurationError, match="API key"):
+        create_ragas_scorer(
+            provider="openai",
+            api_key="",
+            judge_model="judge",
+            ollama_base_url="http://localhost:11434",
+            embedding_model="embedder",
+            embedding_device="cpu",
+            embedding_batch_size=1,
+            model_cache_dir=tmp_path / "models",
+            ragas_cache_dir=tmp_path / "ragas",
+            timeout_seconds=1,
+            max_retries=0,
+            max_output_tokens=512,
+        )

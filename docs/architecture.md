@@ -1,6 +1,6 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 10
+## Implemented through Milestone 11
 
 ```text
 raw Markdown/TXT/PDF
@@ -60,7 +60,7 @@ Request-time routing is a separate bounded workflow:
        grounded answer + cited sources
 ```
 
-The evaluation artifact is deliberately separate from request-time execution:
+The evaluation path is deliberately separate from request-time execution:
 
 ```text
 raw knowledge-base documents
@@ -74,7 +74,17 @@ schema, category, duplicate, source, and section validation
             v
 version-controlled benchmark
             |
-            `----> automated answer scoring (Milestone 11, deferred)
+            v
+dense / hybrid / hybrid + reranking pipelines
+            |
+            v
+real generated answers + retrieved evidence
+            |
+            v
+RAGAS metrics + deterministic source/answerability checks
+            |
+            v
+versioned JSON result artifact
 ```
 
 BM25 is implemented as an independent lexical retriever over the same validated JSONL chunks. It preserves the normalized retrieval result contract and targets exact error codes, environment variables, commands, and product terminology.
@@ -97,9 +107,11 @@ Both sentence-transformer services use the same `MODEL_CACHE_DIR`. Relative cach
 
 The API process remains healthy without Qdrant or LLM credentials. External clients and the embedding model are created lazily when `/api/v1/ask` is used. HTTP tests replace the RAG dependency, so they never make paid model calls.
 
-The Milestone 10 benchmark is a static, human-reviewable JSONL artifact. `app/evaluation` enforces typed case contracts, unique IDs and normalized questions, 30–50 case bounds, all six required categories, and complete knowledge-source coverage. Answerable cases must reference a source file and an exact section title loaded through the production ingestion path. Insufficient-context cases cannot claim evidence and must use the same canonical fallback text as the RAG prompt.
+The benchmark dataset is a static, human-reviewable JSONL artifact. `app/evaluation` enforces typed case contracts, unique IDs and normalized questions, 30–50 case bounds, all six required categories, and complete knowledge-source coverage. Answerable cases must reference a source file and an exact section title loaded through the production ingestion path. Insufficient-context cases cannot claim evidence and must use the same canonical fallback text as the RAG prompt.
 
-Validation is deterministic and offline: it does not execute retrieval, call an LLM, or calculate RAGAS metrics. This keeps dataset quality and system-quality measurement as separate concerns.
+Dataset validation remains deterministic and offline. The separate benchmark runner executes all selected retrieval configurations against the frozen dataset, captures application outputs, then calculates RAGAS faithfulness, answer relevance, context precision, and context recall. It also calculates deterministic expected-source hit rate and answerability accuracy.
+
+Answer generation and judging are independently configurable as OpenAI or Ollama providers. The Ollama adapter uses its OpenAI-compatible local endpoint, while RAGAS uses local Hugging Face embeddings. Runs involving OpenAI require an explicit paid-run confirmation. Each application or metric failure is preserved in the results contract; unavailable measurements are never coerced to zero, and one failed case does not abort later cases.
 
 ## Boundaries
 
@@ -109,15 +121,16 @@ Validation is deterministic and offline: it does not execute retrieval, call an 
 - `app/retrieval/bm25_search.py` owns deterministic lexical tokenization and BM25 ranking.
 - `app/retrieval/hybrid_search.py` owns chunk deduplication and RRF fusion.
 - `app/retrieval/reranker.py` owns cross-encoder scoring and final candidate selection.
-- `app/llm` owns the provider-neutral generation contract. Only its OpenAI adapter knows the Responses API.
+- `app/llm` owns the provider-neutral generation contract. Provider adapters isolate OpenAI Responses API and Ollama's OpenAI-compatible chat endpoint details.
 - `app/rag/attribution.py` owns source grouping, public relevance scores, and citation validation.
 - `app/rag/graph.py` owns graph state, deterministic classification, conditional routing, and the direct-answer node.
 - `app/rag` owns grounding instructions, context formatting, orchestration, and the retrieval-derived confidence heuristic.
-- `app/evaluation` owns benchmark case models, JSONL loading, and dataset/source validation.
+- `app/evaluation` owns benchmark case models, JSONL loading, dataset/source validation, RAGAS scoring, execution, and versioned result contracts.
 - `app/api` validates public payloads and converts service failures to stable HTTP errors.
-- `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark artifact.
+- `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark dataset.
+- `evaluation/results.json` is produced only by a real run and records model/provider provenance plus per-case and aggregate outcomes.
 
-Automated answer scoring (including RAGAS), observability, and the UI are intentionally deferred to their milestones.
+Observability and the UI are intentionally deferred to their milestones.
 
 ## Confidence semantics
 

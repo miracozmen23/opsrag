@@ -2,6 +2,7 @@
 
 from app.core.config import Settings
 from app.llm.base import LanguageModel
+from app.llm.ollama_chat import OllamaChatLanguageModel
 from app.llm.openai_responses import OpenAIResponsesLanguageModel
 
 
@@ -27,7 +28,14 @@ def create_llm_service(settings: Settings) -> LanguageModel:
             max_output_tokens=settings.llm_max_output_tokens,
         )
 
+    if settings.llm_provider == "ollama":
+        return OllamaChatLanguageModel(
+            model=settings.llm_model,
+            base_url=settings.ollama_base_url,
+            timeout_seconds=settings.llm_timeout_seconds,
+            max_output_tokens=settings.llm_max_output_tokens,
+        )
+
     raise LLMConfigurationError(
         f"Unsupported LLM_PROVIDER '{settings.llm_provider}'."
     )
-

@@ -4,7 +4,7 @@ OpsRAG is a compact technical knowledge assistant built incrementally as a produ
 
 ## Current scope
 
-Completed through **Milestone 10 — Evaluation Dataset**:
+Completed through **Milestone 11 — RAGAS Evaluation**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -32,11 +32,18 @@ Completed through **Milestone 10 — Evaluation Dataset**:
 - version-controlled benchmark with 36 manually reviewable questions and reference answers
 - balanced coverage of semantic, exact-keyword, error-code, multi-sentence, ambiguous, and insufficient-context cases
 - validation of every answerable case against real knowledge-base source and section metadata
+- reproducible comparison of dense, hybrid, and hybrid-plus-reranking retrieval
+- RAGAS faithfulness, answer relevance, context precision, and context recall scoring
+- versioned per-case results with retrieved evidence, citations, latency, and model metadata
+- explicit `scored`, `undefined`, and `failed` metric states instead of silently replacing failures with zero
+- per-case application failure isolation so one invalid answer cannot discard a complete benchmark run
+- local Ollama support for both answer generation and RAGAS judging without paid API calls
+- an explicit command-line confirmation guard whenever OpenAI would be used by either role
 - provider-neutral LLM protocol and OpenAI Responses API adapter
 - `POST /api/v1/ask` returning answer, sources, retrieval metadata, and a retrieval-derived confidence heuristic
 - mock-based tests that do not require an API key or paid model call
 
-RAGAS, Langfuse, Streamlit, and full application containers are later milestones.
+Langfuse, Streamlit, and full application containers are later milestones.
 
 ## Local setup
 
@@ -96,7 +103,23 @@ RRF_K=60
 
 Collection replacement is never implicit. Use `python scripts/index.py --recreate` only when you intentionally want to delete and rebuild the configured collection.
 
-Configure an LLM model and secret in `.env`:
+For a fully local run with no per-request API charge, install Ollama, pull a model,
+and configure both generation and evaluation to use it:
+
+```bash
+ollama pull qwen3.5:2b
+```
+
+```env
+LLM_PROVIDER=ollama
+LLM_MODEL=qwen3.5:2b
+OLLAMA_BASE_URL=http://localhost:11434
+RAGAS_JUDGE_PROVIDER=ollama
+RAGAS_JUDGE_MODEL=qwen3.5:2b
+```
+
+`LLM_API_KEY` is not required in this profile. A stronger remote model can instead
+be configured with OpenAI:
 
 ```env
 LLM_PROVIDER=openai
@@ -104,7 +127,9 @@ LLM_MODEL=<an OpenAI model available to your project>
 LLM_API_KEY=<your API key>
 ```
 
-The model name is intentionally not hard-coded. Do not commit `.env`.
+The model name is intentionally not hard-coded. Do not commit `.env`. Local model
+quality and speed depend on the selected model and hardware; the small model above
+is a cost-free baseline rather than a gold-standard evaluator.
 
 Start the API:
 
@@ -200,9 +225,31 @@ Validate the dataset structure, duplicate rules, category coverage, and source/s
 python scripts/validate_evaluation.py
 ```
 
-The command prints deterministic case, category, and source-reference counts. Source counts include both primary and supporting-source references. It does not call an LLM, calculate answer-quality metrics, or claim RAG performance; those capabilities belong to the next evaluation milestone.
+The command prints deterministic case, category, and source-reference counts. Source counts include both primary and supporting-source references. It does not call an LLM or calculate answer-quality metrics.
 
-See [evaluation/README.md](evaluation/README.md) for the schema, review checklist, and instructions for adding cases.
+Run the complete benchmark with the providers configured in `.env`:
+
+```bash
+python scripts/evaluate.py
+```
+
+The default run evaluates all 36 cases with dense, hybrid, and hybrid-plus-reranking retrieval and writes `evaluation/results.json`. If either the answer provider or judge provider is OpenAI, the runner refuses to begin until `--confirm-paid-run` is supplied. That flag acknowledges possible charges; it does not bypass provider billing or create credit.
+
+The results artifact records the dataset hash, answer and judge providers/models, retrieved contexts, answers, citations, latency, source-hit and answerability checks, and all four RAGAS outcomes. Failed or undefined metric calls remain visible and are excluded from metric means rather than being reported as false zeroes.
+
+### Current free local baseline
+
+The checked-in `evaluation/results.json` was generated on 2026-08-27 across 108 executions (36 cases × 3 configurations), using Ollama `qwen3.5:2b` for both answers and judging, RAGAS 0.4.3, and local `BAAI/bge-small-en-v1.5` embeddings. No paid OpenAI request was used.
+
+| Retrieval | App failures | Expected-source hit | Answerability accuracy | Mean app latency |
+| --- | ---: | ---: | ---: | ---: |
+| Dense | 3/36 | 93.33% | 88.89% | 6.56 s |
+| Hybrid | 3/36 | 90.00% | 88.89% | 6.32 s |
+| Hybrid + reranking | 3/36 | 86.67% | 91.67% | 10.58 s |
+
+These are baseline measurements, not a claim that reranking wins every metric. The 256-token local judge profile produced many incomplete faithfulness outputs, so those failures remain explicit in the artifact and faithfulness means have low coverage. See the evaluation guide for scored counts and all RAGAS means.
+
+See [evaluation/README.md](evaluation/README.md) for the dataset and results schemas, review checklist, and instructions for adding cases.
 
 ## Tests
 

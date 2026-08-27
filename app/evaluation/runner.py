@@ -22,11 +22,12 @@ from app.evaluation.results import (
 )
 from app.llm.base import LanguageModel
 from app.rag.models import RAGExecution
-from app.rag.pipeline import RAGPipeline
+from app.rag.pipeline import RAGPipeline, RAGPipelineError
 from app.rag.prompts import INSUFFICIENT_CONTEXT_ANSWER
 from app.retrieval.factory import RetrieverSuite
 
 logger = logging.getLogger(__name__)
+APPLICATION_FAILURE_RESPONSE = "Application failed before producing a valid answer."
 
 
 class EvaluationScorer(Protocol):
@@ -64,7 +65,9 @@ async def run_benchmark(
     pipelines: Mapping[EvaluationConfiguration, TraceableRAGPipeline],
     scorer: EvaluationScorer,
     dataset_path: Path,
+    answer_provider: str,
     answer_model: str,
+    judge_provider: str,
     generated_at: datetime | None = None,
 ) -> BenchmarkResults:
     """Evaluate every case for every configured retrieval path."""
@@ -96,7 +99,9 @@ async def run_benchmark(
         dataset_sha256=sha256_file(dataset_path),
         dataset_case_count=len(dataset.cases),
         ragas_version=scorer.ragas_version,
+        answer_provider=answer_provider,
         answer_model=answer_model,
+        judge_provider=judge_provider,
         judge_model=scorer.judge_model,
         embedding_model=scorer.embedding_model,
         configurations=tuple(configuration_results),
@@ -170,7 +175,50 @@ async def _evaluate_configuration(
     results: list[EvaluationCaseResult] = []
     for index, case in enumerate(cases, start=1):
         started_at = perf_counter()
-        execution = pipeline.answer_with_trace(case.question)
+        try:
+            execution = pipeline.answer_with_trace(case.question)
+        except RAGPipelineError as exc:
+            application_latency_ms = (perf_counter() - started_at) * 1000
+            error = _format_application_error(exc)
+            failed_metrics = {
+                name: MetricOutcome(
+                    status="failed",
+                    error=f"Application failure prevented scoring: {error}",
+                )
+                for name in METRIC_NAMES
+            }
+            results.append(
+                EvaluationCaseResult(
+                    case_id=case.case_id,
+                    category=case.category,
+                    question=case.question,
+                    should_answer=case.should_answer,
+                    expected_answer=case.expected_answer,
+                    expected_source=case.expected_source,
+                    expected_section=case.expected_section,
+                    application_status="failed",
+                    application_error=error,
+                    response=APPLICATION_FAILURE_RESPONSE,
+                    retrieved_contexts=(),
+                    cited_sources=(),
+                    expected_source_retrieved=False if case.should_answer else None,
+                    answerability_correct=False,
+                    retrieval_confidence=0.0,
+                    latency_ms=round(application_latency_ms, 3),
+                    metrics=failed_metrics,
+                )
+            )
+            logger.warning(
+                "evaluation_case_failed configuration=%s case_id=%s progress=%d/%d "
+                "latency_ms=%.2f error=%s",
+                configuration,
+                case.case_id,
+                index,
+                len(cases),
+                application_latency_ms,
+                error,
+            )
+            continue
         application_latency_ms = (perf_counter() - started_at) * 1000
         contexts = [chunk.text for chunk in execution.retrieved_chunks]
         metrics = await scorer.score(
@@ -226,6 +274,9 @@ async def _evaluate_configuration(
     return ConfigurationResult(
         configuration=configuration,
         case_count=len(results),
+        application_failures=sum(
+            result.application_status == "failed" for result in results
+        ),
         expected_source_hit_rate=round(source_hits / len(answerable_results), 4),
         answerability_accuracy=round(
             sum(result.answerability_correct for result in results) / len(results),
@@ -238,6 +289,15 @@ async def _evaluate_configuration(
         metrics=_summarize_metrics(results),
         cases=tuple(results),
     )
+
+
+def _format_application_error(error: BaseException) -> str:
+    parts: list[str] = []
+    current: BaseException | None = error
+    while current is not None and len(parts) < 3:
+        parts.append(f"{type(current).__name__}: {current}")
+        current = current.__cause__
+    return " <- ".join(parts)[:1000]
 
 
 def _expected_source_retrieved(

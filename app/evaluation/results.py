@@ -73,6 +73,8 @@ class EvaluationCaseResult(BaseModel):
     expected_answer: str = Field(min_length=1)
     expected_source: str | None
     expected_section: str | None
+    application_status: Literal["completed", "failed"] = "completed"
+    application_error: str | None = None
     response: str = Field(min_length=1)
     retrieved_contexts: tuple[RetrievedEvidence, ...]
     cited_sources: tuple[str, ...]
@@ -92,6 +94,10 @@ class EvaluationCaseResult(BaseModel):
             raise ValueError(
                 "Unanswerable cases cannot claim an expected-source hit result."
             )
+        if self.application_status == "completed" and self.application_error is not None:
+            raise ValueError("Completed cases cannot include an application error.")
+        if self.application_status == "failed" and not self.application_error:
+            raise ValueError("Failed cases require an application error.")
         return self
 
 
@@ -113,6 +119,7 @@ class ConfigurationResult(BaseModel):
 
     configuration: EvaluationConfiguration
     case_count: int = Field(ge=1)
+    application_failures: int = Field(ge=0)
     expected_source_hit_rate: float = Field(ge=0.0, le=1.0)
     answerability_accuracy: float = Field(ge=0.0, le=1.0)
     mean_latency_ms: float = Field(ge=0.0)
@@ -125,6 +132,12 @@ class ConfigurationResult(BaseModel):
             raise ValueError("Configuration case_count must match stored cases.")
         if set(self.metrics) != set(METRIC_NAMES):
             raise ValueError("Configuration summary must contain all four metrics.")
+        if self.application_failures != sum(
+            case.application_status == "failed" for case in self.cases
+        ):
+            raise ValueError(
+                "Configuration application_failures must match stored cases."
+            )
         return self
 
 
@@ -133,13 +146,15 @@ class BenchmarkResults(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.2"] = "1.2"
     generated_at: datetime
     dataset_path: str = Field(min_length=1)
     dataset_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     dataset_case_count: int = Field(ge=1)
     ragas_version: str = Field(min_length=1)
+    answer_provider: str = Field(min_length=1)
     answer_model: str = Field(min_length=1)
+    judge_provider: str = Field(min_length=1)
     judge_model: str = Field(min_length=1)
     embedding_model: str = Field(min_length=1)
     configurations: tuple[ConfigurationResult, ...] = Field(min_length=1)
