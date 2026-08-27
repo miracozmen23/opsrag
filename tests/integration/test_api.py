@@ -23,13 +23,15 @@ class SuccessfulPipeline:
                 RAGSource(
                     source_id="S1",
                     document="postgresql_troubleshooting.md",
+                    title="PostgreSQL Troubleshooting",
                     section="Connection refused",
                     score=0.8765,
                     chunk_id="chunk_1",
+                    chunk_ids=("chunk_1",),
                 )
             ],
             retrieval_confidence=0.8765,
-            metadata=RAGMetadata(retrieved_chunks=1),
+            metadata=RAGMetadata(retrieved_chunks=1, cited_sources=1),
         )
 
 
@@ -59,8 +61,14 @@ async def test_ask_returns_grounded_response_contract() -> None:
     body = response.json()
     assert body["answer"].endswith("[S1].")
     assert body["sources"][0]["document"] == "postgresql_troubleshooting.md"
+    assert body["sources"][0]["title"] == "PostgreSQL Troubleshooting"
+    assert body["sources"][0]["chunk_ids"] == ["chunk_1"]
     assert body["retrieval_confidence"] == 0.8765
-    assert body["metadata"] == {"retrieved_chunks": 1, "retrieval_method": "dense"}
+    assert body["metadata"] == {
+        "retrieved_chunks": 1,
+        "cited_sources": 1,
+        "retrieval_method": "dense",
+    }
 
 
 @pytest.mark.anyio
@@ -90,4 +98,3 @@ async def test_ask_hides_internal_pipeline_failure() -> None:
         app.dependency_overrides.clear()
     assert response.status_code == 503
     assert response.json() == {"detail": "Answer generation failed."}
-

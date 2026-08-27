@@ -44,11 +44,15 @@ def test_pipeline_retrieves_generates_and_returns_sources() -> None:
 
     assert retriever.calls == [("Why is the port unavailable?", 5)]
     assert result.answer == "Check the port [S1]."
-    assert [source.source_id for source in result.sources] == ["S1", "S2"]
+    assert [source.source_id for source in result.sources] == ["S1"]
     assert result.sources[0].document == "guide.md"
+    assert result.sources[0].title == "Guide"
+    assert result.sources[0].chunk_ids == ("chunk_1",)
     assert result.retrieval_confidence == 0.84
     assert result.metadata.retrieved_chunks == 2
+    assert result.metadata.cited_sources == 1
     assert '"source_id": "S1"' in llm.calls[0]["input_text"]
+    assert '"excerpts"' in llm.calls[0]["input_text"]
 
 
 def test_pipeline_returns_safe_answer_without_context_and_skips_llm() -> None:
@@ -57,6 +61,7 @@ def test_pipeline_returns_safe_answer_without_context_and_skips_llm() -> None:
     assert result.answer == INSUFFICIENT_CONTEXT_ANSWER
     assert result.sources == []
     assert result.retrieval_confidence == 0.0
+    assert result.metadata.cited_sources == 0
     assert llm.calls == []
 
 
@@ -111,6 +116,33 @@ def test_empty_reranked_result_preserves_retrieval_method() -> None:
         retrieval_method="hybrid_reranked",
     ).answer("question")
     assert result.metadata.retrieval_method == "hybrid_reranked"
+
+
+def test_pipeline_returns_only_sources_cited_by_the_answer() -> None:
+    chunks = [
+        make_retrieved_chunk(chunk_id="a", source="first.md", score=0.9),
+        make_retrieved_chunk(chunk_id="b", source="second.md", score=0.4),
+    ]
+    result = RAGPipeline(
+        FakeRetriever(chunks),
+        FakeLanguageModel("Use the second procedure [S2]."),
+    ).answer("question")
+    assert [source.document for source in result.sources] == ["second.md"]
+    assert result.retrieval_confidence == 0.4
+    assert result.metadata.retrieved_chunks == 2
+    assert result.metadata.cited_sources == 1
+
+
+@pytest.mark.parametrize(
+    "answer",
+    ["No citation here.", "Invented source [S9].", "Bad citation [S1, S2]."],
+)
+def test_pipeline_rejects_unverifiable_answer_attribution(answer: str) -> None:
+    with pytest.raises(RAGPipelineError, match="source attribution"):
+        RAGPipeline(
+            FakeRetriever([make_retrieved_chunk()]),
+            FakeLanguageModel(answer),
+        ).answer("question")
 
 
 def test_retrieval_failures_become_pipeline_errors() -> None:

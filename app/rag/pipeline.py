@@ -1,11 +1,15 @@
 """Retrieval followed by source-grounded answer generation."""
 
 import logging
-import math
 from time import perf_counter
 from typing import Literal, Protocol
 
 from app.llm.base import LanguageModel
+from app.rag.attribution import (
+    SourceAttributionError,
+    build_source_contexts,
+    select_cited_sources,
+)
 from app.rag.models import RAGMetadata, RAGResult, RAGSource
 from app.rag.prompts import (
     GROUNDING_INSTRUCTIONS,
@@ -77,8 +81,8 @@ class RAGPipeline:
                 ),
             )
 
-        sources = _build_sources(chunks)
-        prompt_input = build_grounded_input(normalized_question, chunks)
+        source_contexts = build_source_contexts(chunks)
+        prompt_input = build_grounded_input(normalized_question, source_contexts)
         generation_started_at = perf_counter()
         try:
             answer = self.llm.generate(
@@ -88,13 +92,19 @@ class RAGPipeline:
         except Exception as exc:
             raise RAGPipelineError("Answer generation failed.") from exc
         generation_latency_ms = (perf_counter() - generation_started_at) * 1000
+        try:
+            sources = select_cited_sources(answer, source_contexts)
+        except SourceAttributionError as exc:
+            raise RAGPipelineError("Answer source attribution failed.") from exc
 
         logger.info(
             "rag_completed provider=%s model=%s retrieved_chunks=%d "
-            "retrieval_latency_ms=%.2f generation_latency_ms=%.2f total_latency_ms=%.2f",
+            "cited_sources=%d retrieval_latency_ms=%.2f "
+            "generation_latency_ms=%.2f total_latency_ms=%.2f",
             self.llm.provider_name,
             self.llm.model_name,
             len(chunks),
+            len(sources),
             retrieval_latency_ms,
             generation_latency_ms,
             (perf_counter() - started_at) * 1000,
@@ -102,44 +112,16 @@ class RAGPipeline:
         return RAGResult(
             answer=answer,
             sources=sources,
-            retrieval_confidence=_retrieval_confidence(chunks),
+            retrieval_confidence=_retrieval_confidence(sources),
             metadata=RAGMetadata(
                 retrieved_chunks=len(chunks),
+                cited_sources=len(sources),
                 retrieval_method=self.retrieval_method,
             ),
         )
 
 
-def _build_sources(chunks: list[RetrievedChunk]) -> list[RAGSource]:
-    return [
-        RAGSource(
-            source_id=f"S{index}",
-            document=chunk.metadata.source,
-            section=chunk.metadata.section,
-            score=round(_relevance_score(chunk), 4),
-            chunk_id=chunk.metadata.chunk_id,
-        )
-        for index, chunk in enumerate(chunks, start=1)
-    ]
+def _retrieval_confidence(sources: list[RAGSource]) -> float:
+    """Return the best cited-source score; this is not a probability."""
 
-
-def _relevance_score(chunk: RetrievedChunk) -> float:
-    if chunk.rerank_score is None:
-        return float(chunk.score)
-    return _sigmoid(float(chunk.rerank_score))
-
-
-def _sigmoid(value: float) -> float:
-    """Map a cross-encoder logit to a stable 0-1 relevance heuristic."""
-
-    if value >= 0:
-        return 1.0 / (1.0 + math.exp(-value))
-    exp_value = math.exp(value)
-    return exp_value / (1.0 + exp_value)
-
-
-def _retrieval_confidence(chunks: list[RetrievedChunk]) -> float:
-    """Clamp the best final relevance score; this is not a probability."""
-
-    top_score = max(_relevance_score(chunk) for chunk in chunks)
-    return round(max(0.0, min(1.0, top_score)), 4)
+    return round(max(source.score for source in sources), 4)

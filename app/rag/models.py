@@ -12,9 +12,12 @@ class RAGSource(BaseModel):
 
     source_id: str = Field(pattern=r"^S[1-9][0-9]*$")
     document: str = Field(min_length=1)
+    title: str = Field(min_length=1)
     section: str = Field(min_length=1)
-    score: float
+    page_number: int | None = Field(default=None, ge=1)
+    score: float = Field(ge=0.0, le=1.0)
     chunk_id: str = Field(min_length=1)
+    chunk_ids: tuple[str, ...] = Field(min_length=1)
 
 
 class RAGMetadata(BaseModel):
@@ -23,6 +26,7 @@ class RAGMetadata(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     retrieved_chunks: int = Field(ge=0)
+    cited_sources: int = Field(default=0, ge=0)
     retrieval_method: Literal["dense", "hybrid_reranked"] = "dense"
 
 
