@@ -10,7 +10,7 @@ from app.rag.attribution import (
     build_source_contexts,
     select_cited_sources,
 )
-from app.rag.models import RAGMetadata, RAGResult, RAGSource
+from app.rag.models import RAGExecution, RAGMetadata, RAGResult, RAGSource
 from app.rag.prompts import (
     GROUNDING_INSTRUCTIONS,
     INSUFFICIENT_CONTEXT_ANSWER,
@@ -43,7 +43,7 @@ class RAGPipeline:
         llm: LanguageModel,
         *,
         top_k: int = 10,
-        retrieval_method: Literal["dense", "hybrid_reranked"] = "dense",
+        retrieval_method: Literal["dense", "hybrid", "hybrid_reranked"] = "dense",
     ) -> None:
         if top_k < 1:
             raise ValueError("RAG top_k must be at least 1.")
@@ -53,6 +53,13 @@ class RAGPipeline:
         self.retrieval_method = retrieval_method
 
     def answer(self, question: str) -> RAGResult:
+        """Return the public grounded answer contract."""
+
+        return self.answer_with_trace(question).result
+
+    def answer_with_trace(self, question: str) -> RAGExecution:
+        """Return an answer with the exact ranked chunks used as context."""
+
         normalized_question = question.strip()
         if not normalized_question:
             raise RAGPipelineError("Question cannot be empty.")
@@ -71,14 +78,17 @@ class RAGPipeline:
                 retrieval_latency_ms,
                 (perf_counter() - started_at) * 1000,
             )
-            return RAGResult(
-                answer=INSUFFICIENT_CONTEXT_ANSWER,
-                sources=[],
-                retrieval_confidence=0.0,
-                metadata=RAGMetadata(
-                    retrieved_chunks=0,
-                    retrieval_method=self.retrieval_method,
+            return RAGExecution(
+                result=RAGResult(
+                    answer=INSUFFICIENT_CONTEXT_ANSWER,
+                    sources=[],
+                    retrieval_confidence=0.0,
+                    metadata=RAGMetadata(
+                        retrieved_chunks=0,
+                        retrieval_method=self.retrieval_method,
+                    ),
                 ),
+                retrieved_chunks=(),
             )
 
         source_contexts = build_source_contexts(chunks)
@@ -109,15 +119,18 @@ class RAGPipeline:
             generation_latency_ms,
             (perf_counter() - started_at) * 1000,
         )
-        return RAGResult(
-            answer=answer,
-            sources=sources,
-            retrieval_confidence=_retrieval_confidence(sources),
-            metadata=RAGMetadata(
-                retrieved_chunks=len(chunks),
-                cited_sources=len(sources),
-                retrieval_method=self.retrieval_method,
+        return RAGExecution(
+            result=RAGResult(
+                answer=answer,
+                sources=sources,
+                retrieval_confidence=_retrieval_confidence(sources),
+                metadata=RAGMetadata(
+                    retrieved_chunks=len(chunks),
+                    cited_sources=len(sources),
+                    retrieval_method=self.retrieval_method,
+                ),
             ),
+            retrieved_chunks=tuple(chunks),
         )
 
 

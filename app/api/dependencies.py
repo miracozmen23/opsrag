@@ -4,45 +4,18 @@ from functools import lru_cache
 
 from fastapi import HTTPException, status
 
-from app.core.config import get_settings, resolve_project_path
-from app.core.service_factory import (
-    create_embedding_service,
-    create_qdrant_client,
-    create_reranker_service,
-)
-from app.ingestion.pipeline import read_chunks_jsonl
+from app.core.config import get_settings
 from app.llm.factory import LLMConfigurationError, create_llm_service
 from app.rag.graph import QueryRoutingGraph
 from app.rag.models import RAGResult
 from app.rag.pipeline import RAGPipeline
-from app.retrieval.bm25_search import BM25Retriever
-from app.retrieval.hybrid_search import HybridRetriever
-from app.retrieval.reranker import RerankingRetriever
-from app.retrieval.vector_search import DenseRetriever, QdrantVectorStore
+from app.retrieval.factory import create_retriever_suite
 
 
 @lru_cache(maxsize=1)
 def _build_knowledge_pipeline() -> RAGPipeline:
     settings = get_settings()
-    chunks = read_chunks_jsonl(resolve_project_path(settings.processed_chunks_path))
-    embedding_service = create_embedding_service(settings)
-    vector_store = QdrantVectorStore(
-        create_qdrant_client(settings),
-        settings.qdrant_collection,
-    )
-    dense_retriever = DenseRetriever(embedding_service, vector_store)
-    hybrid_retriever = HybridRetriever(
-        dense_retriever,
-        BM25Retriever(chunks),
-        dense_top_k=settings.top_k_dense,
-        sparse_top_k=settings.top_k_sparse,
-        rrf_k=settings.rrf_k,
-    )
-    retriever = RerankingRetriever(
-        hybrid_retriever,
-        create_reranker_service(settings),
-        candidate_top_k=settings.top_k_hybrid,
-    )
+    retriever = create_retriever_suite(settings).hybrid_reranked
     return RAGPipeline(
         retriever,
         create_llm_service(settings),

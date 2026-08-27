@@ -55,6 +55,24 @@ def test_pipeline_retrieves_generates_and_returns_sources() -> None:
     assert '"excerpts"' in llm.calls[0]["input_text"]
 
 
+def test_pipeline_trace_preserves_ranked_context_chunks() -> None:
+    chunks = [
+        make_retrieved_chunk(chunk_id="first", text="First context."),
+        make_retrieved_chunk(chunk_id="second", text="Second context."),
+    ]
+
+    execution = RAGPipeline(
+        FakeRetriever(chunks),
+        FakeLanguageModel(),
+    ).answer_with_trace("question")
+
+    assert execution.result.answer == "Check the port [S1]."
+    assert [chunk.text for chunk in execution.retrieved_chunks] == [
+        "First context.",
+        "Second context.",
+    ]
+
+
 def test_pipeline_returns_safe_answer_without_context_and_skips_llm() -> None:
     llm = FakeLanguageModel()
     result = RAGPipeline(FakeRetriever([]), llm).answer("Unknown topic")
@@ -116,6 +134,15 @@ def test_empty_reranked_result_preserves_retrieval_method() -> None:
         retrieval_method="hybrid_reranked",
     ).answer("question")
     assert result.metadata.retrieval_method == "hybrid_reranked"
+
+
+def test_hybrid_result_preserves_retrieval_method() -> None:
+    result = RAGPipeline(
+        FakeRetriever([make_retrieved_chunk(retrieval_method="hybrid")]),
+        FakeLanguageModel(),
+        retrieval_method="hybrid",
+    ).answer("question")
+    assert result.metadata.retrieval_method == "hybrid"
 
 
 def test_pipeline_returns_only_sources_cited_by_the_answer() -> None:

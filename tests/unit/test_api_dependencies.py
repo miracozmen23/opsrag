@@ -69,8 +69,10 @@ def test_general_graph_setup_does_not_read_chunks(
     )
     monkeypatch.setattr(
         dependencies,
-        "read_chunks_jsonl",
-        lambda path: (_ for _ in ()).throw(AssertionError("chunks were read")),
+        "create_retriever_suite",
+        lambda settings: (_ for _ in ()).throw(
+            AssertionError("retrievers were constructed")
+        ),
     )
 
     graph = dependencies._build_rag_pipeline.__wrapped__()

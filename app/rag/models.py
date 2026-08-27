@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.retrieval.models import RetrievedChunk
+
 
 class RAGSource(BaseModel):
     """One retrieved source made visible with an answer."""
@@ -27,7 +29,9 @@ class RAGMetadata(BaseModel):
 
     retrieved_chunks: int = Field(ge=0)
     cited_sources: int = Field(default=0, ge=0)
-    retrieval_method: Literal["dense", "hybrid_reranked", "not_used"] = "dense"
+    retrieval_method: Literal[
+        "dense", "hybrid", "hybrid_reranked", "not_used"
+    ] = "dense"
     route: Literal["knowledge", "general"] = "knowledge"
 
 
@@ -40,3 +44,12 @@ class RAGResult(BaseModel):
     sources: list[RAGSource]
     retrieval_confidence: float = Field(ge=0.0, le=1.0)
     metadata: RAGMetadata
+
+
+class RAGExecution(BaseModel):
+    """Internal RAG result plus the exact ranked contexts used for generation."""
+
+    model_config = ConfigDict(frozen=True)
+
+    result: RAGResult
+    retrieved_chunks: tuple[RetrievedChunk, ...]

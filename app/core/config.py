@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(default=30.0, gt=0)
     llm_max_output_tokens: int = Field(default=800, ge=1)
 
+    ragas_judge_model: str = ""
+    ragas_cache_dir: Path = Path(".cache/ragas")
+    ragas_timeout_seconds: float = Field(default=60.0, gt=0)
+    ragas_max_retries: int = Field(default=3, ge=0)
+
     @field_validator("qdrant_api_key", "llm_api_key", mode="before")
     @classmethod
     def empty_secret_to_none(cls, value: Any) -> Any:
