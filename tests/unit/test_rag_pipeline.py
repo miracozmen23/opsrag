@@ -1,0 +1,91 @@
+"""Basic RAG orchestration behavior."""
+
+import pytest
+
+from app.rag.pipeline import RAGPipeline, RAGPipelineError
+from app.rag.prompts import INSUFFICIENT_CONTEXT_ANSWER
+from app.retrieval.models import RetrievedChunk
+from tests.helpers import make_retrieved_chunk
+
+
+class FakeRetriever:
+    def __init__(self, results: list[RetrievedChunk]) -> None:
+        self.results = results
+        self.calls: list[tuple[str, int]] = []
+
+    def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+        self.calls.append((query, top_k))
+        return self.results
+
+
+class FakeLanguageModel:
+    provider_name = "fake"
+    model_name = "fake-model"
+
+    def __init__(self, answer: str = "Check the port [S1].") -> None:
+        self.answer_text = answer
+        self.calls: list[dict[str, str]] = []
+
+    def generate(self, *, instructions: str, input_text: str) -> str:
+        self.calls.append({"instructions": instructions, "input_text": input_text})
+        return self.answer_text
+
+
+def test_pipeline_retrieves_generates_and_returns_sources() -> None:
+    chunks = [
+        make_retrieved_chunk(score=0.84),
+        make_retrieved_chunk(chunk_id="chunk_2", source="other.md", score=0.51),
+    ]
+    retriever = FakeRetriever(chunks)
+    llm = FakeLanguageModel()
+    pipeline = RAGPipeline(retriever, llm, top_k=5)
+
+    result = pipeline.answer(" Why is the port unavailable? ")
+
+    assert retriever.calls == [("Why is the port unavailable?", 5)]
+    assert result.answer == "Check the port [S1]."
+    assert [source.source_id for source in result.sources] == ["S1", "S2"]
+    assert result.sources[0].document == "guide.md"
+    assert result.retrieval_confidence == 0.84
+    assert result.metadata.retrieved_chunks == 2
+    assert '"source_id": "S1"' in llm.calls[0]["input_text"]
+
+
+def test_pipeline_returns_safe_answer_without_context_and_skips_llm() -> None:
+    llm = FakeLanguageModel()
+    result = RAGPipeline(FakeRetriever([]), llm).answer("Unknown topic")
+    assert result.answer == INSUFFICIENT_CONTEXT_ANSWER
+    assert result.sources == []
+    assert result.retrieval_confidence == 0.0
+    assert llm.calls == []
+
+
+@pytest.mark.parametrize(("score", "expected"), [(1.4, 1.0), (-0.2, 0.0)])
+def test_retrieval_confidence_is_clamped(score: float, expected: float) -> None:
+    result = RAGPipeline(
+        FakeRetriever([make_retrieved_chunk(score=score)]),
+        FakeLanguageModel(),
+    ).answer("question")
+    assert result.retrieval_confidence == expected
+
+
+def test_retrieval_failures_become_pipeline_errors() -> None:
+    class FailingRetriever:
+        def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+            raise ConnectionError("qdrant unavailable")
+
+    with pytest.raises(RAGPipelineError, match="retrieval failed"):
+        RAGPipeline(FailingRetriever(), FakeLanguageModel()).answer("question")
+
+
+def test_generation_failures_become_pipeline_errors() -> None:
+    class FailingLLM(FakeLanguageModel):
+        def generate(self, *, instructions: str, input_text: str) -> str:
+            raise TimeoutError("provider unavailable")
+
+    with pytest.raises(RAGPipelineError, match="generation failed"):
+        RAGPipeline(
+            FakeRetriever([make_retrieved_chunk()]),
+            FailingLLM(),
+        ).answer("question")
+
