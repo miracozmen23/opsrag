@@ -1,10 +1,10 @@
 # OpsRAG
 
-OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation routes requests through a bounded LangGraph workflow, runs technical questions through hybrid retrieval and cross-encoder reranking, and answers clearly general messages directly without pretending retrieval occurred.
+OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation routes requests through a bounded LangGraph workflow, runs technical questions through hybrid retrieval and cross-encoder reranking, answers clearly general messages directly without pretending retrieval occurred, and includes a source-validated evaluation benchmark for the next measurement stage.
 
 ## Current scope
 
-Completed through **Milestone 9 — LangGraph Query Routing**:
+Completed through **Milestone 10 — Evaluation Dataset**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -29,6 +29,9 @@ Completed through **Milestone 9 — LangGraph Query Routing**:
 - conservative deterministic routing for English and Turkish general messages
 - lazy knowledge-pipeline construction so general requests do not read chunks or contact Qdrant
 - explicit route and retrieval-usage metadata on every API answer
+- version-controlled benchmark with 36 manually reviewable questions and reference answers
+- balanced coverage of semantic, exact-keyword, error-code, multi-sentence, ambiguous, and insufficient-context cases
+- validation of every answerable case against real knowledge-base source and section metadata
 - provider-neutral LLM protocol and OpenAI Responses API adapter
 - `POST /api/v1/ask` returning answer, sources, retrieval metadata, and a retrieval-derived confidence heuristic
 - mock-based tests that do not require an API key or paid model call
@@ -186,6 +189,20 @@ A general response makes retrieval absence explicit:
 ```
 
 The knowledge pipeline is constructed lazily only after LangGraph selects that branch. A clearly general request therefore does not load the JSONL chunk corpus, build BM25, access Qdrant, or load embedding/reranker models. Both routes still require the configured LLM service.
+
+## Evaluation dataset
+
+The benchmark is stored as JSONL in `evaluation/questions.jsonl`. It contains 36 cases: 30 answerable questions grounded in the five current knowledge-base documents and 6 questions that must return the canonical insufficient-context response. Each of the six required categories contains exactly 6 cases.
+
+Validate the dataset structure, duplicate rules, category coverage, and source/section references:
+
+```bash
+python scripts/validate_evaluation.py
+```
+
+The command prints deterministic case, category, and source-reference counts. Source counts include both primary and supporting-source references. It does not call an LLM, calculate answer-quality metrics, or claim RAG performance; those capabilities belong to the next evaluation milestone.
+
+See [evaluation/README.md](evaluation/README.md) for the schema, review checklist, and instructions for adding cases.
 
 ## Tests
 

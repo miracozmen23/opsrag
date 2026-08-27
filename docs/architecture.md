@@ -1,6 +1,6 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 9
+## Implemented through Milestone 10
 
 ```text
 raw Markdown/TXT/PDF
@@ -57,7 +57,24 @@ Request-time routing is a separate bounded workflow:
          validate answer citations
                    |
                    v
-      grounded answer + cited sources
+       grounded answer + cited sources
+```
+
+The evaluation artifact is deliberately separate from request-time execution:
+
+```text
+raw knowledge-base documents
+            |
+            v
+manually reviewed questions + reference answers (JSONL)
+            |
+            v
+schema, category, duplicate, source, and section validation
+            |
+            v
+version-controlled benchmark
+            |
+            `----> automated answer scoring (Milestone 11, deferred)
 ```
 
 BM25 is implemented as an independent lexical retriever over the same validated JSONL chunks. It preserves the normalized retrieval result contract and targets exact error codes, environment variables, commands, and product terminology.
@@ -80,6 +97,10 @@ Both sentence-transformer services use the same `MODEL_CACHE_DIR`. Relative cach
 
 The API process remains healthy without Qdrant or LLM credentials. External clients and the embedding model are created lazily when `/api/v1/ask` is used. HTTP tests replace the RAG dependency, so they never make paid model calls.
 
+The Milestone 10 benchmark is a static, human-reviewable JSONL artifact. `app/evaluation` enforces typed case contracts, unique IDs and normalized questions, 30–50 case bounds, all six required categories, and complete knowledge-source coverage. Answerable cases must reference a source file and an exact section title loaded through the production ingestion path. Insufficient-context cases cannot claim evidence and must use the same canonical fallback text as the RAG prompt.
+
+Validation is deterministic and offline: it does not execute retrieval, call an LLM, or calculate RAGAS metrics. This keeps dataset quality and system-quality measurement as separate concerns.
+
 ## Boundaries
 
 - `app/ingestion` owns source parsing, cleaning, chunk IDs, and JSONL artifacts.
@@ -92,9 +113,11 @@ The API process remains healthy without Qdrant or LLM credentials. External clie
 - `app/rag/attribution.py` owns source grouping, public relevance scores, and citation validation.
 - `app/rag/graph.py` owns graph state, deterministic classification, conditional routing, and the direct-answer node.
 - `app/rag` owns grounding instructions, context formatting, orchestration, and the retrieval-derived confidence heuristic.
+- `app/evaluation` owns benchmark case models, JSONL loading, and dataset/source validation.
 - `app/api` validates public payloads and converts service failures to stable HTTP errors.
+- `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark artifact.
 
-Evaluation, observability, and the UI are intentionally deferred to their milestones.
+Automated answer scoring (including RAGAS), observability, and the UI are intentionally deferred to their milestones.
 
 ## Confidence semantics
 
