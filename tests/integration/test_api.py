@@ -68,6 +68,44 @@ async def test_ask_returns_grounded_response_contract() -> None:
         "retrieved_chunks": 1,
         "cited_sources": 1,
         "retrieval_method": "dense",
+        "route": "knowledge",
+    }
+
+
+@pytest.mark.anyio
+async def test_ask_exposes_general_route_without_retrieval_metadata() -> None:
+    class SuccessfulGeneralPipeline:
+        def answer(self, question: str) -> RAGResult:
+            assert question == "Hello"
+            return RAGResult(
+                answer="Hello! How can I help?",
+                sources=[],
+                retrieval_confidence=0.0,
+                metadata=RAGMetadata(
+                    retrieved_chunks=0,
+                    cited_sources=0,
+                    retrieval_method="not_used",
+                    route="general",
+                ),
+            )
+
+    app.dependency_overrides[get_rag_pipeline] = lambda: SuccessfulGeneralPipeline()
+    try:
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+            response = await client.post("/api/v1/ask", json={"question": "Hello"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["sources"] == []
+    assert body["retrieval_confidence"] == 0.0
+    assert body["metadata"] == {
+        "retrieved_chunks": 0,
+        "cited_sources": 0,
+        "retrieval_method": "not_used",
+        "route": "general",
     }
 
 

@@ -41,8 +41,10 @@ def test_api_builds_hybrid_reranked_pipeline(
         lambda configured_settings: FakeLanguageModel(),
     )
 
-    pipeline = dependencies._build_rag_pipeline.__wrapped__()
+    graph = dependencies._build_rag_pipeline.__wrapped__()
+    pipeline = dependencies._build_knowledge_pipeline.__wrapped__()
 
+    assert graph.llm.model_name == "fake-model"
     assert pipeline.top_k == 4
     assert pipeline.retrieval_method == "hybrid_reranked"
     assert isinstance(pipeline.retriever, RerankingRetriever)
@@ -53,3 +55,26 @@ def test_api_builds_hybrid_reranked_pipeline(
     assert hybrid.sparse_top_k == 7
     assert hybrid.rrf_k == 55
     assert hybrid.sparse_retriever.corpus_size == 1
+
+
+def test_general_graph_setup_does_not_read_chunks(
+    monkeypatch,
+) -> None:
+    settings = Settings(_env_file=None)
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
+    monkeypatch.setattr(
+        dependencies,
+        "create_llm_service",
+        lambda configured_settings: FakeLanguageModel(),
+    )
+    monkeypatch.setattr(
+        dependencies,
+        "read_chunks_jsonl",
+        lambda path: (_ for _ in ()).throw(AssertionError("chunks were read")),
+    )
+
+    graph = dependencies._build_rag_pipeline.__wrapped__()
+    result = graph.answer("Hello")
+
+    assert result.metadata.route == "general"
+    assert result.metadata.retrieval_method == "not_used"

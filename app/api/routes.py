@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.dependencies import get_rag_pipeline
 from app.api.schemas import AskRequest, AskResponse, HealthResponse
-from app.rag.pipeline import RAGPipeline, RAGPipelineError
+from app.rag.graph import QueryRoutingGraph
+from app.rag.pipeline import RAGPipelineError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -22,9 +23,9 @@ async def health() -> HealthResponse:
 @router.post("/api/v1/ask", response_model=AskResponse, tags=["rag"])
 def ask(
     request: AskRequest,
-    pipeline: RAGPipeline = Depends(get_rag_pipeline),
+    pipeline: QueryRoutingGraph = Depends(get_rag_pipeline),
 ) -> AskResponse:
-    """Answer a question from retrieved knowledge-base context."""
+    """Route and answer a knowledge-base or clearly general question."""
 
     try:
         result = pipeline.answer(request.question)

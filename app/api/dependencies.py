@@ -12,6 +12,8 @@ from app.core.service_factory import (
 )
 from app.ingestion.pipeline import read_chunks_jsonl
 from app.llm.factory import LLMConfigurationError, create_llm_service
+from app.rag.graph import QueryRoutingGraph
+from app.rag.models import RAGResult
 from app.rag.pipeline import RAGPipeline
 from app.retrieval.bm25_search import BM25Retriever
 from app.retrieval.hybrid_search import HybridRetriever
@@ -20,9 +22,8 @@ from app.retrieval.vector_search import DenseRetriever, QdrantVectorStore
 
 
 @lru_cache(maxsize=1)
-def _build_rag_pipeline() -> RAGPipeline:
+def _build_knowledge_pipeline() -> RAGPipeline:
     settings = get_settings()
-    llm = create_llm_service(settings)
     chunks = read_chunks_jsonl(resolve_project_path(settings.processed_chunks_path))
     embedding_service = create_embedding_service(settings)
     vector_store = QdrantVectorStore(
@@ -44,14 +45,28 @@ def _build_rag_pipeline() -> RAGPipeline:
     )
     return RAGPipeline(
         retriever,
-        llm,
+        create_llm_service(settings),
         top_k=settings.top_k_rerank,
         retrieval_method="hybrid_reranked",
     )
 
 
-def get_rag_pipeline() -> RAGPipeline:
-    """Resolve the RAG service while translating setup errors to HTTP 503."""
+class _LazyKnowledgePipeline:
+    """Delay retrieval setup until the graph actually selects the RAG branch."""
+
+    def answer(self, question: str) -> RAGResult:
+        return _build_knowledge_pipeline().answer(question)
+
+
+@lru_cache(maxsize=1)
+def _build_rag_pipeline() -> QueryRoutingGraph:
+    settings = get_settings()
+    llm = create_llm_service(settings)
+    return QueryRoutingGraph(_LazyKnowledgePipeline(), llm)
+
+
+def get_rag_pipeline() -> QueryRoutingGraph:
+    """Resolve the routed answer service while translating setup errors to HTTP 503."""
 
     try:
         return _build_rag_pipeline()
@@ -66,3 +81,4 @@ def clear_dependency_cache() -> None:
     """Clear cached services, primarily for isolated tests."""
 
     _build_rag_pipeline.cache_clear()
+    _build_knowledge_pipeline.cache_clear()

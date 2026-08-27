@@ -27,7 +27,8 @@ class RAGMetadata(BaseModel):
 
     retrieved_chunks: int = Field(ge=0)
     cited_sources: int = Field(default=0, ge=0)
-    retrieval_method: Literal["dense", "hybrid_reranked"] = "dense"
+    retrieval_method: Literal["dense", "hybrid_reranked", "not_used"] = "dense"
+    route: Literal["knowledge", "general"] = "knowledge"
 
 
 class RAGResult(BaseModel):
