@@ -171,6 +171,7 @@ The retrieval observation stores ranked identifiers and retrieval/reranking scor
 - `frontend/config.py` owns the independently configurable FastAPI address and UI request timeout.
 - `frontend/client.py` owns HTTP communication and validates every successful response against the public `AskResponse` contract.
 - `frontend/streamlit_app.py` owns question input and presentation of answers, confidence, route metadata, and API-owned source records.
+- `frontend/theme.py` owns the responsive visual system and contains no retrieval or API behavior.
 - `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark dataset.
 - `evaluation/results.json` is produced only by a real run and records model/provider provenance plus per-case and aggregate outcomes.
 

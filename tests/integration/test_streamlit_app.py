@@ -15,6 +15,12 @@ from app.rag.models import RAGMetadata, RAGResult
 from frontend.client import OpsRAGAPIClient
 
 APP_PATH = Path(__file__).resolve().parents[2] / "frontend" / "streamlit_app.py"
+EXPECTED_EXAMPLE_QUESTIONS = [
+    "Why does PostgreSQL return connection refused in Docker Compose?",
+    "How should I troubleshoot an HTTP 503 error?",
+    "What should I check when a FastAPI application fails to start?",
+    "How should environment variables and secrets be handled in production?",
+]
 
 
 class DemoPipeline:
@@ -39,9 +45,10 @@ def test_streamlit_app_renders_question_form() -> None:
     app = AppTest.from_file(str(APP_PATH), default_timeout=10).run()
 
     assert not app.exception
-    assert app.title[0].value == "OpsRAG"
+    assert any("Resolve incidents" in item.value for item in app.markdown)
     assert app.text_area[0].label == "Technical question"
-    assert app.button[0].label == "Ask OpsRAG"
+    assert app.button[0].label == "Generate grounded answer  →"
+    assert [button.label for button in app.button[1:]] == EXPECTED_EXAMPLE_QUESTIONS
 
 
 def test_streamlit_app_rejects_blank_submission() -> None:
@@ -52,6 +59,15 @@ def test_streamlit_app_rejects_blank_submission() -> None:
 
     assert not app.exception
     assert app.warning[0].value == "Please enter a question."
+
+
+def test_streamlit_example_button_populates_question() -> None:
+    app = AppTest.from_file(str(APP_PATH), default_timeout=10).run()
+
+    app.button[1].click().run()
+
+    assert not app.exception
+    assert app.text_area[0].value == EXPECTED_EXAMPLE_QUESTIONS[0]
 
 
 def test_streamlit_app_renders_answer_metadata_and_sources(monkeypatch) -> None:
@@ -91,8 +107,8 @@ def test_streamlit_app_renders_answer_metadata_and_sources(monkeypatch) -> None:
     app.button[0].click().run()
 
     assert not app.exception
-    assert app.subheader[0].value == "Answer"
-    assert app.markdown[0].value == result.answer
+    assert any("Evidence-backed answer" in item.value for item in app.markdown)
+    assert any(item.value == result.answer for item in app.markdown)
     assert [metric.value for metric in app.metric] == ["87.6%", "Knowledge", "1"]
     assert app.expander[0].label == "[S1] PostgreSQL Troubleshooting"
 
