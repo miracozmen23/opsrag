@@ -4,13 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opsrag"
-version = "0.12.0"
+version = "0.13.0"
 description = "A compact, production-oriented technical knowledge RAG assistant"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "charset-normalizer>=3.4,<4.0",
     "fastapi>=0.115,<1.0",
+    "httpx>=0.28,<1.0",
     "langgraph>=1.2,<2.0",
     "langfuse>=4.7,<5.0",
     "openai>=2.0,<3.0",
@@ -19,6 +20,7 @@ dependencies = [
     "qdrant-client>=1.19,<2.0",
     "rank-bm25>=0.2.2,<1.0",
     "sentence-transformers>=5.7,<7.0",
+    "streamlit>=1.50,<2.0",
     "uvicorn[standard]>=0.32,<1.0",
 ]
 
@@ -27,12 +29,11 @@ evaluation = [
     "ragas==0.4.3",
 ]
 dev = [
-    "httpx>=0.28,<1.0",
     "pytest>=8.3,<10.0",
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "frontend*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

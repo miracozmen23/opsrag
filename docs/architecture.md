@@ -1,6 +1,25 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 12
+## Implemented through Milestone 13
+
+The user-facing demo is a separate HTTP client of the public API:
+
+```text
+browser
+   |
+   v
+Streamlit demo
+   |
+   | POST /api/v1/ask (JSON)
+   v
+FastAPI request/response boundary
+   |
+   v
+bounded LangGraph workflow
+```
+
+This separation keeps Streamlit presentation concerns out of retrieval and lets
+the API remain the single validated entry point for questions.
 
 ```text
 raw Markdown/TXT/PDF
@@ -149,10 +168,16 @@ The retrieval observation stores ranked identifiers and retrieval/reranking scor
 - `app/evaluation` owns benchmark case models, JSONL loading, dataset/source validation, RAGAS scoring, execution, and versioned result contracts.
 - `app/observability` owns optional, fail-open tracing contracts and the Langfuse SDK adapter.
 - `app/api` validates public payloads and converts service failures to stable HTTP errors.
+- `frontend/config.py` owns the independently configurable FastAPI address and UI request timeout.
+- `frontend/client.py` owns HTTP communication and validates every successful response against the public `AskResponse` contract.
+- `frontend/streamlit_app.py` owns question input and presentation of answers, confidence, route metadata, and API-owned source records.
 - `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark dataset.
 - `evaluation/results.json` is produced only by a real run and records model/provider provenance plus per-case and aggregate outcomes.
 
-The UI is intentionally deferred to its milestone.
+Full Docker packaging for the API and Streamlit processes remains deferred to its
+own milestone. The current demo connects to the address configured by
+`OPSRAG_API_BASE_URL`, which also allows the next milestone to replace
+`localhost` with a Compose service name without changing application code.
 
 ## Confidence semantics
 

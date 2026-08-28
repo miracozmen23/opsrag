@@ -4,7 +4,7 @@ OpsRAG is a compact technical knowledge assistant built incrementally as a produ
 
 ## Current scope
 
-Completed through **Milestone 12 — Langfuse Observability**:
+Completed through **Milestone 13 — Streamlit Demo**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -45,9 +45,12 @@ Completed through **Milestone 12 — Langfuse Observability**:
 - fail-open exporter isolation so tracing failures cannot break an answer request
 - provider-neutral LLM protocol and OpenAI Responses API adapter
 - `POST /api/v1/ask` returning answer, sources, retrieval metadata, and a retrieval-derived confidence heuristic
+- minimal Streamlit question-and-answer demo backed exclusively by the public FastAPI contract
+- answer, cited-source, retrieval-confidence, route, and execution-metadata presentation
+- configurable API URL and timeout with clear unavailable, timeout, and invalid-response errors
 - mock-based tests that do not require an API key or paid model call
 
-Streamlit and full application containers are later milestones.
+Full application containers are a later milestone.
 
 ## Local setup
 
@@ -140,6 +143,31 @@ Start the API:
 ```bash
 uvicorn app.main:app --reload
 ```
+
+## Streamlit demo
+
+Keep the API running, then open a second terminal in the repository and start the
+demo:
+
+```bash
+python -m streamlit run frontend/streamlit_app.py
+```
+
+Streamlit prints the local browser address, normally `http://localhost:8501`.
+The demo sends each submitted question to `POST /api/v1/ask` and displays the
+validated answer, retrieval confidence, route, context count, and cited source
+metadata. It does not import or execute the retrieval pipeline directly.
+
+The default backend address and the longer local-model-friendly timeout can be
+overridden in `.env`:
+
+```env
+OPSRAG_API_BASE_URL=http://localhost:8000
+OPSRAG_API_TIMEOUT_SECONDS=300
+```
+
+If FastAPI is stopped, times out, or returns a response outside the published
+schema, the page shows a safe error instead of an application traceback.
 
 ## API
 
@@ -288,6 +316,6 @@ See [evaluation/README.md](evaluation/README.md) for the dataset and results sch
 python -m pytest
 ```
 
-The OpenAI adapter follows the official Responses API shape (`instructions`, `input`, `max_output_tokens`, and the SDK `output_text` convenience property). Unit and API tests use injected fake clients and services.
+The OpenAI adapter follows the official Responses API shape (`instructions`, `input`, `max_output_tokens`, and the SDK `output_text` convenience property). Unit, API, HTTP-boundary, and Streamlit interaction tests use injected fake clients and services, so the suite does not require a paid model call.
 
 See [docs/architecture.md](docs/architecture.md) for module boundaries and deferred milestones.
