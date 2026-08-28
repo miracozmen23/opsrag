@@ -1,6 +1,6 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 14
+## Implemented through Milestone 15
 
 The complete local runtime is health-gated by Docker Compose:
 
@@ -217,3 +217,29 @@ The configured cross-encoder emits raw relevance logits. OpsRAG preserves these 
 Directly constructed dense-only `RAGPipeline` instances remain supported for isolated tests and reuse; without a reranker score, their confidence falls back to the previous clamped retrieval score behavior.
 
 General-route answers do not use retrieval, so they expose `retrieval_confidence=0.0` rather than manufacturing a confidence signal.
+
+## Test architecture
+
+The test suite has two deliberate layers:
+
+```text
+unit tests
+  |-- ingestion: loader, cleaner, chunker, deterministic JSONL
+  |-- retrieval: Qdrant wrapper, BM25, RRF, reranking
+  |-- RAG: prompt formatting, source grouping, citation validation
+  `-- boundaries: configuration, providers, routing, observability
+
+integration tests
+  |-- FastAPI contracts: /health and /api/v1/ask
+  |-- real HTTP client -> live FastAPI test server
+  |-- Streamlit interactions
+  `-- in-memory Qdrant -> dense + BM25 -> RRF -> reranking
+      -> grounded RAG -> LangGraph -> FastAPI response
+```
+
+The deepest integration path uses the production storage, retrieval,
+attribution, orchestration, routing, and API components. Only computational or
+external boundaries—embedding, cross-encoder reranking, and answer
+generation—use deterministic test implementations. This keeps the suite fully
+offline and free while still detecting incompatible payloads and wiring errors
+between layers.

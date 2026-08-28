@@ -4,7 +4,7 @@ OpsRAG is a compact technical knowledge assistant built incrementally as a produ
 
 ## Current scope
 
-Completed through **Milestone 14 — Dockerization**:
+Completed through **Milestone 15 — Tests**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -53,7 +53,9 @@ Completed through **Milestone 14 — Dockerization**:
 - health-gated Docker Compose topology for `qdrant`, `api`, and `frontend`
 - repository-local model cache, document data, and Qdrant storage bind-mounted from the host drive
 - non-root application containers, localhost-only published ports, and disabled Qdrant telemetry
-- mock-based tests that do not require an API key or paid model call
+- focused unit tests for ingestion, retrieval, source attribution, routing, and provider boundaries
+- deterministic in-memory Qdrant integration tests spanning indexing, hybrid retrieval, reranking, LangGraph, and the public API
+- API, real HTTP-boundary, and Streamlit interaction tests that require no API key or paid model call
 
 ## Docker quick start
 
@@ -376,6 +378,18 @@ See [evaluation/README.md](evaluation/README.md) for the dataset and results sch
 python -m pytest
 ```
 
-The OpenAI adapter follows the official Responses API shape (`instructions`, `input`, `max_output_tokens`, and the SDK `output_text` convenience property). Unit, API, HTTP-boundary, and Streamlit interaction tests use injected fake clients and services, so the suite does not require a paid model call.
+The 176-test suite separates fast unit checks from integration boundaries. It
+covers deterministic cleaning and chunking, BM25, RRF, chunk/source
+deduplication, source formatting and validation, router behavior, Qdrant
+indexing and retrieval, `/health`, `/api/v1/ask`, the real frontend HTTP
+client, and Streamlit interactions.
+
+The full retrieval integration path uses Qdrant's in-memory engine together
+with deterministic local embedding, reranking, and language-model substitutes.
+Production indexing, dense search, BM25, RRF, reranking orchestration,
+grounded generation, LangGraph routing, and FastAPI serialization remain real.
+No test needs an API key, internet connection, model download, or paid request.
+
+The OpenAI adapter follows the official Responses API shape (`instructions`, `input`, `max_output_tokens`, and the SDK `output_text` convenience property).
 
 See [docs/architecture.md](docs/architecture.md) for module boundaries and deferred milestones.
