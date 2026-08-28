@@ -1,10 +1,12 @@
 # OpsRAG
 
+[![Tests](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml)
+
 OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation routes requests through a bounded LangGraph workflow, runs technical questions through hybrid retrieval and cross-encoder reranking, answers clearly general messages directly without pretending retrieval occurred, evaluates real outputs, and can trace requests end to end with optional Langfuse observability.
 
 ## Current scope
 
-Completed through **Milestone 15 — Tests**:
+Completed through **Milestone 16 — GitHub Actions**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -56,6 +58,7 @@ Completed through **Milestone 15 — Tests**:
 - focused unit tests for ingestion, retrieval, source attribution, routing, and provider boundaries
 - deterministic in-memory Qdrant integration tests spanning indexing, hybrid retrieval, reranking, LangGraph, and the public API
 - API, real HTTP-boundary, and Streamlit interaction tests that require no API key or paid model call
+- minimal GitHub Actions CI that runs the offline test suite on every `main` push and pull request
 
 ## Docker quick start
 
@@ -391,5 +394,9 @@ grounded generation, LangGraph routing, and FastAPI serialization remain real.
 No test needs an API key, internet connection, model download, or paid request.
 
 The OpenAI adapter follows the official Responses API shape (`instructions`, `input`, `max_output_tokens`, and the SDK `output_text` convenience property).
+
+The same command runs automatically in GitHub Actions for every push and pull
+request targeting `main`. CI installs CPU-only PyTorch, requires no repository
+secret, and has read-only access to repository contents.
 
 See [docs/architecture.md](docs/architecture.md) for module boundaries and deferred milestones.

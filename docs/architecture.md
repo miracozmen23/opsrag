@@ -1,6 +1,6 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 15
+## Implemented through Milestone 16
 
 The complete local runtime is health-gated by Docker Compose:
 
@@ -243,3 +243,11 @@ external boundaries—embedding, cross-encoder reranking, and answer
 generation—use deterministic test implementations. This keeps the suite fully
 offline and free while still detecting incompatible payloads and wiring errors
 between layers.
+
+## Continuous integration
+
+`.github/workflows/tests.yml` runs the offline suite on pushes and pull requests
+targeting `main`. The job uses Python 3.11 on GitHub's hosted Ubuntu runner,
+installs the CPU-only PyTorch build before project dependencies, and executes
+`python -m pytest`. It receives only `contents: read` permission and needs no
+model-provider, Qdrant, Langfuse, or other repository secret.
