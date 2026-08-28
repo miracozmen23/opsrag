@@ -1,6 +1,6 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 16
+## Implemented through Milestone 17
 
 The complete local runtime is health-gated by Docker Compose:
 
