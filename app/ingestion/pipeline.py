@@ -58,7 +58,8 @@ def write_chunks_jsonl(chunks: list[Chunk], output_path: Path) -> None:
         json.dumps(chunk.model_dump(mode="json"), ensure_ascii=False, sort_keys=True)
         for chunk in chunks
     ]
-    temporary_path.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+    payload = "\n".join(lines) + ("\n" if lines else "")
+    temporary_path.write_bytes(payload.encode("utf-8"))
     temporary_path.replace(output_path)
 
 
@@ -76,4 +77,3 @@ def read_chunks_jsonl(input_path: Path) -> list[Chunk]:
         except Exception as exc:
             raise ValueError(f"Invalid chunk JSONL at line {line_number}: {exc}") from exc
     return chunks
-

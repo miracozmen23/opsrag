@@ -4,7 +4,7 @@ OpsRAG is a compact technical knowledge assistant built incrementally as a produ
 
 ## Current scope
 
-Completed through **Milestone 13 — Streamlit Demo**:
+Completed through **Milestone 14 — Dockerization**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -49,9 +49,66 @@ Completed through **Milestone 13 — Streamlit Demo**:
 - polished hero, example-question shortcuts, answer metrics, relevance bars, and evidence panels
 - answer, cited-source, retrieval-confidence, route, and execution-metadata presentation
 - configurable API URL and timeout with clear unavailable, timeout, and invalid-response errors
+- one CPU-only application image shared by the FastAPI and Streamlit services
+- health-gated Docker Compose topology for `qdrant`, `api`, and `frontend`
+- repository-local model cache, document data, and Qdrant storage bind-mounted from the host drive
+- non-root application containers, localhost-only published ports, and disabled Qdrant telemetry
 - mock-based tests that do not require an API key or paid model call
 
-Full application containers are a later milestone.
+## Docker quick start
+
+Docker is the shortest clone-to-question path. Copy the environment template and
+configure either the free local Ollama profile or an OpenAI profile first:
+
+```powershell
+copy .env.example .env
+```
+
+For the free local profile, keep Ollama running on the host and pull the selected
+model before starting the containers:
+
+```powershell
+ollama pull qwen3.5:2b
+docker compose up --build -d
+```
+
+Create the deterministic chunks and index them into the containerized Qdrant:
+
+```powershell
+docker compose run --rm api python scripts/ingest.py
+docker compose run --rm api python scripts/index.py
+```
+
+Then open:
+
+- Streamlit: `http://localhost:8501`
+- FastAPI docs: `http://localhost:8000/docs`
+- FastAPI health: `http://localhost:8000/health`
+
+Inspect service health or follow logs:
+
+```powershell
+docker compose ps
+docker compose logs -f api frontend
+```
+
+Stop the stack without deleting project data:
+
+```powershell
+docker compose down
+```
+
+Stop any manually started Uvicorn, Streamlit, or Qdrant process before Compose so
+ports `8000`, `8501`, `6333`, and `6334` are available. Compose reaches a host
+Ollama instance through `host.docker.internal`; an OpenAI configuration does not
+require Ollama. On native Linux, Ollama may additionally need
+`OLLAMA_HOST=0.0.0.0:11434` so containers can reach it.
+
+The application image deliberately installs CPU-only PyTorch. Model downloads are
+stored in the repository-local `.cache` directory, documents and chunks in
+`data`, and Qdrant files in `qdrant_storage`. These bind mounts keep growing RAG
+artifacts on the drive containing the repository instead of inside Docker's
+virtual disk. All three paths are excluded from Git as appropriate.
 
 ## Local setup
 

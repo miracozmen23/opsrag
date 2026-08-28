@@ -14,7 +14,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     configure_logging(resolved_settings.log_level)
     application = FastAPI(
         title=resolved_settings.app_name,
-        version="0.13.0",
+        version="0.14.0",
         description="Source-grounded technical knowledge assistant.",
     )
     application.include_router(router)

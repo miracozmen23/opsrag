@@ -1,6 +1,34 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 13
+## Implemented through Milestone 14
+
+The complete local runtime is health-gated by Docker Compose:
+
+```text
+browser
+   |
+   v
+frontend container :8501
+   |
+   | internal HTTP
+   v
+api container :8000 --------------> host Ollama :11434
+   |                                  or configured OpenAI endpoint
+   |
+   v
+qdrant container :6333
+
+Host bind mounts on the repository drive:
+  ./.cache          -> model cache
+  ./data            -> raw documents and deterministic chunks
+  ./qdrant_storage  -> vector collection files
+```
+
+FastAPI and Streamlit share one non-root CPU-only application image but run as
+separate processes. Qdrant must become healthy before the API starts, and the API
+must become healthy before Streamlit starts. Published ports bind to localhost;
+service-to-service traffic remains on the Compose network. Qdrant telemetry is
+explicitly disabled for the local stack.
 
 The user-facing demo is a separate HTTP client of the public API:
 
@@ -172,13 +200,15 @@ The retrieval observation stores ranked identifiers and retrieval/reranking scor
 - `frontend/client.py` owns HTTP communication and validates every successful response against the public `AskResponse` contract.
 - `frontend/streamlit_app.py` owns question input and presentation of answers, confidence, route metadata, and API-owned source records.
 - `frontend/theme.py` owns the responsive visual system and contains no retrieval or API behavior.
+- `Dockerfile` owns the shared non-root CPU application image and excludes CUDA runtime dependencies.
+- `docker-compose.yml` owns service wiring, health gates, host-Ollama routing, published ports, and persistent bind mounts.
+- `.dockerignore` prevents secrets, virtual environments, caches, tests, and local vector data from entering the build context.
 - `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark dataset.
 - `evaluation/results.json` is produced only by a real run and records model/provider provenance plus per-case and aggregate outcomes.
 
-Full Docker packaging for the API and Streamlit processes remains deferred to its
-own milestone. The current demo connects to the address configured by
-`OPSRAG_API_BASE_URL`, which also allows the next milestone to replace
-`localhost` with a Compose service name without changing application code.
+Compose overrides `OPSRAG_API_BASE_URL` with the internal `api` service name and
+overrides `QDRANT_URL` with the internal `qdrant` service name. The same code
+continues to use localhost defaults when launched directly from the host.
 
 ## Confidence semantics
 
