@@ -2,9 +2,12 @@
 
 from pathlib import Path
 
+from qdrant_client import QdrantClient
+
 from app.api import dependencies
 from app.core.config import Settings
 from app.ingestion.pipeline import write_chunks_jsonl
+from app.retrieval import factory as retrieval_factory
 from app.retrieval.hybrid_search import HybridRetriever
 from app.retrieval.reranker import RerankingRetriever
 from tests.helpers import make_chunk
@@ -40,9 +43,18 @@ def test_api_builds_hybrid_reranked_pipeline(
         "create_llm_service",
         lambda configured_settings: FakeLanguageModel(),
     )
+    qdrant = QdrantClient(location=":memory:")
+    monkeypatch.setattr(
+        retrieval_factory,
+        "create_qdrant_client",
+        lambda configured_settings: qdrant,
+    )
 
-    graph = dependencies._build_rag_pipeline.__wrapped__()
-    pipeline = dependencies._build_knowledge_pipeline.__wrapped__()
+    try:
+        graph = dependencies._build_rag_pipeline.__wrapped__()
+        pipeline = dependencies._build_knowledge_pipeline.__wrapped__()
+    finally:
+        qdrant.close()
 
     assert graph.llm.model_name == "fake-model"
     assert pipeline.top_k == 4

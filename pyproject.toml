@@ -39,3 +39,4 @@ include = ["app*", "frontend*"]
 testpaths = ["tests"]
 addopts = "-ra"
 cache_dir = ".cache/pytest"
+filterwarnings = ["error"]
