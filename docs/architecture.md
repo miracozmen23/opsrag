@@ -1,6 +1,6 @@
 # OpsRAG Architecture
 
-## Implemented through Milestone 11
+## Implemented through Milestone 12
 
 ```text
 raw Markdown/TXT/PDF
@@ -60,6 +60,21 @@ Request-time routing is a separate bounded workflow:
        grounded answer + cited sources
 ```
 
+Optional observability wraps the same bounded execution rather than changing its control flow:
+
+```text
+opsrag.query (chain)
+|-- query.classify (span)
+|-- llm.general (generation)             [general route]
+`-- rag.pipeline (chain)                 [knowledge route]
+    |-- rag.retrieve (retriever)
+    |     `-- chunk IDs + retrieval/RRF/rerank scores
+    |-- rag.generate (generation)
+    |     `-- instructions + full context prompt + response
+    `-- rag.attribution (span)
+          `-- allowed and cited source IDs
+```
+
 The evaluation path is deliberately separate from request-time execution:
 
 ```text
@@ -113,6 +128,12 @@ Dataset validation remains deterministic and offline. The separate benchmark run
 
 Answer generation and judging are independently configurable as OpenAI or Ollama providers. The Ollama adapter uses its OpenAI-compatible local endpoint, while RAGAS uses local Hugging Face embeddings. Runs involving OpenAI require an explicit paid-run confirmation. Each application or metric failure is preserved in the results contract; unavailable measurements are never coerced to zero, and one failed case does not abort later cases.
 
+`app/observability` defines a provider-neutral observation boundary and a Langfuse SDK v4 adapter. `QueryRoutingGraph` creates the root trace and classification/general-generation observations. `RAGPipeline` adds nested pipeline, retrieval, grounded-generation, and attribution observations. Context managers preserve parent-child relationships through the synchronous LangGraph execution.
+
+Tracing is explicit opt-in. Disabled, missing-credential, missing-package, or initialization-failure states resolve to `NoOpObservability`. Observation start, update, close, flush, and shutdown failures are logged without replacing or swallowing application results and exceptions. Trace error messages are bounded to application-safe summaries rather than provider secrets. Langfuse itself exports asynchronously; its SDK shutdown hook flushes queued observations at process exit.
+
+The retrieval observation stores ranked identifiers and retrieval/reranking scores without duplicating chunk text. The generation observation necessarily stores the complete prompt, which already contains the retrieved excerpts, plus the model response. Operators must therefore treat `LANGFUSE_BASE_URL` as an approved data destination before enabling tracing.
+
 ## Boundaries
 
 - `app/ingestion` owns source parsing, cleaning, chunk IDs, and JSONL artifacts.
@@ -126,11 +147,12 @@ Answer generation and judging are independently configurable as OpenAI or Ollama
 - `app/rag/graph.py` owns graph state, deterministic classification, conditional routing, and the direct-answer node.
 - `app/rag` owns grounding instructions, context formatting, orchestration, and the retrieval-derived confidence heuristic.
 - `app/evaluation` owns benchmark case models, JSONL loading, dataset/source validation, RAGAS scoring, execution, and versioned result contracts.
+- `app/observability` owns optional, fail-open tracing contracts and the Langfuse SDK adapter.
 - `app/api` validates public payloads and converts service failures to stable HTTP errors.
 - `evaluation/questions.jsonl` is the version-controlled, manually reviewed benchmark dataset.
 - `evaluation/results.json` is produced only by a real run and records model/provider provenance plus per-case and aggregate outcomes.
 
-Observability and the UI are intentionally deferred to their milestones.
+The UI is intentionally deferred to its milestone.
 
 ## Confidence semantics
 

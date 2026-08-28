@@ -70,7 +70,18 @@ class Settings(BaseSettings):
     ragas_max_retries: int = Field(default=3, ge=0)
     ragas_max_output_tokens: int = Field(default=512, ge=64)
 
-    @field_validator("qdrant_api_key", "llm_api_key", mode="before")
+    langfuse_enabled: bool = False
+    langfuse_public_key: str = ""
+    langfuse_secret_key: SecretStr | None = None
+    langfuse_base_url: str = "https://cloud.langfuse.com"
+    langfuse_sample_rate: float = Field(default=1.0, ge=0.0, le=1.0)
+
+    @field_validator(
+        "qdrant_api_key",
+        "llm_api_key",
+        "langfuse_secret_key",
+        mode="before",
+    )
     @classmethod
     def empty_secret_to_none(cls, value: Any) -> Any:
         """Treat blank optional secrets as unset values."""

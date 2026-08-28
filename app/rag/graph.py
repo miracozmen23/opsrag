@@ -8,6 +8,7 @@ from typing import Literal, Protocol, TypedDict
 from langgraph.graph import END, START, StateGraph
 
 from app.llm.base import LanguageModel
+from app.observability import NoOpObservability, ObservabilityClient
 from app.rag.models import RAGMetadata, RAGResult
 from app.rag.pipeline import RAGPipelineError
 
@@ -107,10 +108,12 @@ class QueryRoutingGraph:
         llm: LanguageModel,
         *,
         router: QueryRouter | None = None,
+        observability: ObservabilityClient | None = None,
     ) -> None:
         self.rag_pipeline = rag_pipeline
         self.llm = llm
         self.router = router or RuleBasedQueryRouter()
+        self.observability = observability or NoOpObservability()
         self.workflow = self._build_workflow()
 
     def answer(self, question: str) -> RAGResult:
@@ -121,23 +124,53 @@ class QueryRoutingGraph:
             raise RAGPipelineError("Question cannot be empty.")
 
         started_at = perf_counter()
-        try:
-            final_state = self.workflow.invoke({"question": normalized_question})
-        except RAGPipelineError:
-            raise
-        except Exception as exc:
-            raise RAGPipelineError("Query routing failed.") from exc
+        with self.observability.observe(
+            name="opsrag.query",
+            as_type="chain",
+            input={"question": normalized_question},
+            metadata={"workflow": "langgraph"},
+        ) as trace:
+            try:
+                final_state = self.workflow.invoke({"question": normalized_question})
+                result = final_state.get("result")
+                route = final_state.get("route")
+                if not isinstance(result, RAGResult) or route not in (
+                    "knowledge",
+                    "general",
+                ):
+                    raise RAGPipelineError(
+                        "Query routing produced an invalid result."
+                    )
+            except RAGPipelineError as exc:
+                trace.update(
+                    level="ERROR",
+                    status_message=str(exc),
+                    output={"error": str(exc)},
+                )
+                raise
+            except Exception as exc:
+                trace.update(
+                    level="ERROR",
+                    status_message="Query routing failed.",
+                    output={"error_type": type(exc).__name__},
+                )
+                raise RAGPipelineError("Query routing failed.") from exc
 
-        result = final_state.get("result")
-        route = final_state.get("route")
-        if not isinstance(result, RAGResult) or route not in ("knowledge", "general"):
-            raise RAGPipelineError("Query routing produced an invalid result.")
-        logger.info(
-            "query_routing_completed route=%s latency_ms=%.2f",
-            route,
-            (perf_counter() - started_at) * 1000,
-        )
-        return result
+            latency_ms = (perf_counter() - started_at) * 1000
+            trace.update(
+                output=result.model_dump(mode="json"),
+                metadata={
+                    "route": route,
+                    "retrieval_method": result.metadata.retrieval_method,
+                    "latency_ms": f"{latency_ms:.2f}",
+                },
+            )
+            logger.info(
+                "query_routing_completed route=%s latency_ms=%.2f",
+                route,
+                latency_ms,
+            )
+            return result
 
     def _build_workflow(self):
         builder = StateGraph(RoutingState)
@@ -155,7 +188,21 @@ class QueryRoutingGraph:
         return builder.compile()
 
     def _classify_node(self, state: RoutingState) -> RoutingState:
-        route = self.router.route(state["question"])
+        with self.observability.observe(
+            name="query.classify",
+            as_type="span",
+            input={"question": state["question"]},
+        ) as observation:
+            try:
+                route = self.router.route(state["question"])
+            except Exception as exc:
+                observation.update(
+                    level="ERROR",
+                    status_message="Query classification failed.",
+                    output={"error_type": type(exc).__name__},
+                )
+                raise
+            observation.update(output={"route": route})
         logger.info("query_classified route=%s", route)
         return {"route": route}
 
@@ -176,27 +223,45 @@ class QueryRoutingGraph:
         return {"result": result}
 
     def _general_node(self, state: RoutingState) -> RoutingState:
-        try:
-            answer = self.llm.generate(
-                instructions=GENERAL_INSTRUCTIONS,
-                input_text=state["question"],
-            )
-            if _SOURCE_LIKE_PATTERN.search(answer):
-                raise ValueError("Direct answers cannot contain source citations.")
-            result = RAGResult(
-                answer=answer,
-                sources=[],
-                retrieval_confidence=0.0,
-                metadata=RAGMetadata(
-                    retrieved_chunks=0,
-                    cited_sources=0,
-                    retrieval_method="not_used",
-                    route="general",
-                ),
-            )
-        except Exception as exc:
-            raise RAGPipelineError("Direct answer generation failed.") from exc
-        return {"result": result}
+        with self.observability.observe(
+            name="llm.general",
+            as_type="generation",
+            input={
+                "instructions": GENERAL_INSTRUCTIONS,
+                "question": state["question"],
+            },
+            model=self.llm.model_name,
+            metadata={"provider": self.llm.provider_name},
+        ) as generation:
+            try:
+                answer = self.llm.generate(
+                    instructions=GENERAL_INSTRUCTIONS,
+                    input_text=state["question"],
+                )
+                if _SOURCE_LIKE_PATTERN.search(answer):
+                    raise ValueError(
+                        "Direct answers cannot contain source citations."
+                    )
+                result = RAGResult(
+                    answer=answer,
+                    sources=[],
+                    retrieval_confidence=0.0,
+                    metadata=RAGMetadata(
+                        retrieved_chunks=0,
+                        cited_sources=0,
+                        retrieval_method="not_used",
+                        route="general",
+                    ),
+                )
+            except Exception as exc:
+                generation.update(
+                    level="ERROR",
+                    status_message="Direct answer generation failed.",
+                    output={"error_type": type(exc).__name__},
+                )
+                raise RAGPipelineError("Direct answer generation failed.") from exc
+            generation.update(output=answer)
+            return {"result": result}
 
 
 def _normalize_for_routing(question: str) -> str:

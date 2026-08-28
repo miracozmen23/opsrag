@@ -7,6 +7,7 @@ import pytest
 from app.rag.graph import QueryRoutingGraph, RuleBasedQueryRouter
 from app.rag.models import RAGMetadata, RAGResult, RAGSource
 from app.rag.pipeline import RAGPipelineError
+from tests.helpers import RecordingObservability
 
 
 def make_rag_result() -> RAGResult:
@@ -133,6 +134,33 @@ def test_general_route_runs_direct_llm_node_without_retrieval() -> None:
     )
 
 
+def test_general_route_records_nested_query_and_generation_observations() -> None:
+    observability = RecordingObservability()
+    graph = QueryRoutingGraph(
+        FakeRAGPipeline(),
+        FakeLanguageModel("Hello from the model."),
+        router=FixedRouter("general"),
+        observability=observability,
+    )
+
+    result = graph.answer("Hello")
+
+    assert result.answer == "Hello from the model."
+    assert [record["name"] for record in observability.records] == [
+        "opsrag.query",
+        "query.classify",
+        "llm.general",
+    ]
+    generation = observability.by_name("llm.general")
+    assert generation["parent"] == "opsrag.query"
+    assert generation["model"] == "fake-model"
+    assert generation["input"]["question"] == "Hello"
+    assert generation["updates"][-1] == {"output": "Hello from the model."}
+    root_update = observability.by_name("opsrag.query")["updates"][-1]
+    assert root_update["output"]["metadata"]["route"] == "general"
+    assert root_update["metadata"]["retrieval_method"] == "not_used"
+
+
 def test_workflow_contains_only_bounded_single_pass_nodes() -> None:
     graph = QueryRoutingGraph(FakeRAGPipeline(), FakeLanguageModel())
     drawable = graph.workflow.get_graph()
@@ -148,6 +176,24 @@ def test_general_route_rejects_invalid_direct_answers(answer: str) -> None:
     )
     with pytest.raises(RAGPipelineError, match="Direct answer generation failed"):
         graph.answer("hello")
+
+
+def test_general_route_records_error_state_before_raising() -> None:
+    observability = RecordingObservability()
+    graph = QueryRoutingGraph(
+        FakeRAGPipeline(),
+        FakeLanguageModel("Invalid [S1]."),
+        router=FixedRouter("general"),
+        observability=observability,
+    )
+
+    with pytest.raises(RAGPipelineError, match="Direct answer generation failed"):
+        graph.answer("hello")
+
+    generation_updates = observability.by_name("llm.general")["updates"]
+    root_updates = observability.by_name("opsrag.query")["updates"]
+    assert generation_updates[-1]["level"] == "ERROR"
+    assert root_updates[-1]["level"] == "ERROR"
 
 
 def test_graph_rejects_blank_question_before_routing() -> None:

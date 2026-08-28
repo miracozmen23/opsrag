@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "opsrag"
-version = "0.11.0"
+version = "0.12.0"
 description = "A compact, production-oriented technical knowledge RAG assistant"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,6 +12,7 @@ dependencies = [
     "charset-normalizer>=3.4,<4.0",
     "fastapi>=0.115,<1.0",
     "langgraph>=1.2,<2.0",
+    "langfuse>=4.7,<5.0",
     "openai>=2.0,<3.0",
     "pydantic-settings>=2.6,<3.0",
     "pypdf>=5.0,<7.0",

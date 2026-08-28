@@ -6,10 +6,16 @@ from fastapi import HTTPException, status
 
 from app.core.config import get_settings
 from app.llm.factory import LLMConfigurationError, create_llm_service
+from app.observability import ObservabilityClient, create_observability
 from app.rag.graph import QueryRoutingGraph
 from app.rag.models import RAGResult
 from app.rag.pipeline import RAGPipeline
 from app.retrieval.factory import create_retriever_suite
+
+
+@lru_cache(maxsize=1)
+def _build_observability() -> ObservabilityClient:
+    return create_observability(get_settings())
 
 
 @lru_cache(maxsize=1)
@@ -21,6 +27,7 @@ def _build_knowledge_pipeline() -> RAGPipeline:
         create_llm_service(settings),
         top_k=settings.top_k_rerank,
         retrieval_method="hybrid_reranked",
+        observability=_build_observability(),
     )
 
 
@@ -35,7 +42,11 @@ class _LazyKnowledgePipeline:
 def _build_rag_pipeline() -> QueryRoutingGraph:
     settings = get_settings()
     llm = create_llm_service(settings)
-    return QueryRoutingGraph(_LazyKnowledgePipeline(), llm)
+    return QueryRoutingGraph(
+        _LazyKnowledgePipeline(),
+        llm,
+        observability=_build_observability(),
+    )
 
 
 def get_rag_pipeline() -> QueryRoutingGraph:
@@ -55,3 +66,6 @@ def clear_dependency_cache() -> None:
 
     _build_rag_pipeline.cache_clear()
     _build_knowledge_pipeline.cache_clear()
+    if _build_observability.cache_info().currsize:
+        _build_observability().shutdown()
+    _build_observability.cache_clear()

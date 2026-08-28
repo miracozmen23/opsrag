@@ -5,7 +5,7 @@ import pytest
 from app.rag.pipeline import RAGPipeline, RAGPipelineError
 from app.rag.prompts import INSUFFICIENT_CONTEXT_ANSWER
 from app.retrieval.models import RetrievedChunk
-from tests.helpers import make_retrieved_chunk
+from tests.helpers import RecordingObservability, make_retrieved_chunk
 
 
 class FakeRetriever:
@@ -71,6 +71,44 @@ def test_pipeline_trace_preserves_ranked_context_chunks() -> None:
         "First context.",
         "Second context.",
     ]
+
+
+def test_pipeline_records_retrieval_prompt_generation_and_attribution() -> None:
+    observability = RecordingObservability()
+    pipeline = RAGPipeline(
+        FakeRetriever([make_retrieved_chunk(score=0.82, rerank_score=1.5)]),
+        FakeLanguageModel(),
+        retrieval_method="hybrid_reranked",
+        observability=observability,
+    )
+
+    result = pipeline.answer("Why is the port unavailable?")
+
+    assert result.answer == "Check the port [S1]."
+    assert [record["name"] for record in observability.records] == [
+        "rag.pipeline",
+        "rag.retrieve",
+        "rag.generate",
+        "rag.attribution",
+    ]
+    retrieval = observability.by_name("rag.retrieve")
+    assert retrieval["parent"] == "rag.pipeline"
+    traced_chunk = retrieval["updates"][-1]["output"]["chunks"][0]
+    assert traced_chunk == {
+        "rank": 1,
+        "chunk_id": "chunk_1",
+        "source": "guide.md",
+        "section": "Troubleshooting",
+        "retrieval_method": "dense",
+        "score": 0.82,
+        "rerank_score": 1.5,
+    }
+    generation = observability.by_name("rag.generate")
+    assert generation["model"] == "fake-model"
+    assert "Check the service logs" in generation["input"]["prompt"]
+    assert generation["updates"][-1]["output"] == "Check the port [S1]."
+    attribution = observability.by_name("rag.attribution")
+    assert attribution["updates"][-1]["output"]["cited_source_ids"] == ["S1"]
 
 
 def test_pipeline_returns_safe_answer_without_context_and_skips_llm() -> None:
@@ -203,6 +241,28 @@ def test_retrieval_failures_become_pipeline_errors() -> None:
 
     with pytest.raises(RAGPipelineError, match="retrieval failed"):
         RAGPipeline(FailingRetriever(), FakeLanguageModel()).answer("question")
+
+
+def test_retrieval_failure_is_recorded_on_stage_and_pipeline() -> None:
+    class FailingRetriever:
+        def search(self, query: str, top_k: int) -> list[RetrievedChunk]:
+            raise ConnectionError("qdrant unavailable")
+
+    observability = RecordingObservability()
+    pipeline = RAGPipeline(
+        FailingRetriever(),
+        FakeLanguageModel(),
+        observability=observability,
+    )
+
+    with pytest.raises(RAGPipelineError, match="retrieval failed"):
+        pipeline.answer("question")
+
+    retrieval_update = observability.by_name("rag.retrieve")["updates"][-1]
+    pipeline_update = observability.by_name("rag.pipeline")["updates"][-1]
+    assert retrieval_update["level"] == "ERROR"
+    assert retrieval_update["output"]["error_type"] == "ConnectionError"
+    assert pipeline_update["level"] == "ERROR"
 
 
 def test_generation_failures_become_pipeline_errors() -> None:

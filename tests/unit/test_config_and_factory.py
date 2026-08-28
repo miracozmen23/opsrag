@@ -10,9 +10,21 @@ from app.llm.ollama_chat import OllamaChatLanguageModel
 
 
 def test_blank_optional_secrets_become_none() -> None:
-    settings = Settings(_env_file=None, qdrant_api_key="", llm_api_key="")
+    settings = Settings(
+        _env_file=None,
+        qdrant_api_key="",
+        llm_api_key="",
+        langfuse_secret_key="",
+    )
     assert settings.qdrant_api_key is None
     assert settings.llm_api_key is None
+    assert settings.langfuse_secret_key is None
+
+
+@pytest.mark.parametrize("sample_rate", [-0.1, 1.1])
+def test_langfuse_sample_rate_must_be_bounded(sample_rate: float) -> None:
+    with pytest.raises(ValidationError, match="langfuse_sample_rate"):
+        Settings(_env_file=None, langfuse_sample_rate=sample_rate)
 
 
 def test_overlap_must_be_smaller_than_chunk_size() -> None:

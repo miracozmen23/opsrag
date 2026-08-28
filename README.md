@@ -1,10 +1,10 @@
 # OpsRAG
 
-OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation routes requests through a bounded LangGraph workflow, runs technical questions through hybrid retrieval and cross-encoder reranking, answers clearly general messages directly without pretending retrieval occurred, and includes a source-validated evaluation benchmark for the next measurement stage.
+OpsRAG is a compact technical knowledge assistant built incrementally as a production-oriented RAG portfolio project. The current implementation routes requests through a bounded LangGraph workflow, runs technical questions through hybrid retrieval and cross-encoder reranking, answers clearly general messages directly without pretending retrieval occurred, evaluates real outputs, and can trace requests end to end with optional Langfuse observability.
 
 ## Current scope
 
-Completed through **Milestone 11 — RAGAS Evaluation**:
+Completed through **Milestone 12 — Langfuse Observability**:
 
 - FastAPI application with `GET /health`
 - Markdown, TXT, and text-based PDF ingestion
@@ -39,11 +39,15 @@ Completed through **Milestone 11 — RAGAS Evaluation**:
 - per-case application failure isolation so one invalid answer cannot discard a complete benchmark run
 - local Ollama support for both answer generation and RAGAS judging without paid API calls
 - an explicit command-line confirmation guard whenever OpenAI would be used by either role
+- optional Langfuse SDK v4 tracing with no-op behavior when disabled or incompletely configured
+- nested query, classification, retrieval, generation, and source-attribution observations
+- trace payloads containing prompts, answers, chunk identifiers, retrieval/reranking scores, latency, and error states
+- fail-open exporter isolation so tracing failures cannot break an answer request
 - provider-neutral LLM protocol and OpenAI Responses API adapter
 - `POST /api/v1/ask` returning answer, sources, retrieval metadata, and a retrieval-derived confidence heuristic
 - mock-based tests that do not require an API key or paid model call
 
-Langfuse, Streamlit, and full application containers are later milestones.
+Streamlit and full application containers are later milestones.
 
 ## Local setup
 
@@ -214,6 +218,33 @@ A general response makes retrieval absence explicit:
 ```
 
 The knowledge pipeline is constructed lazily only after LangGraph selects that branch. A clearly general request therefore does not load the JSONL chunk corpus, build BM25, access Qdrant, or load embedding/reranker models. Both routes still require the configured LLM service.
+
+## Optional Langfuse observability
+
+Tracing is disabled by default. Enable it only after creating a Langfuse project and deciding that the configured host may receive the request data:
+
+```env
+LANGFUSE_ENABLED=true
+LANGFUSE_PUBLIC_KEY=<your public key>
+LANGFUSE_SECRET_KEY=<your secret key>
+LANGFUSE_BASE_URL=https://cloud.langfuse.com
+LANGFUSE_SAMPLE_RATE=1.0
+```
+
+One knowledge request produces this nested observation shape:
+
+```text
+opsrag.query (chain)
+|-- query.classify (span)
+`-- rag.pipeline (chain)
+    |-- rag.retrieve (retriever)
+    |-- rag.generate (generation)
+    `-- rag.attribution (span)
+```
+
+General requests contain `query.classify` and `llm.general` beneath the root query. The trace stores the user question, full generation prompt, model response, final answer metadata, retrieved chunk identifiers, source names, retrieval and reranking scores, stage latency, and explicit error states. The current provider-neutral LLM contract returns text only, so token usage and cost are not fabricated when a provider does not expose them.
+
+**Privacy:** the full RAG prompt contains retrieved knowledge-base excerpts. When Langfuse is enabled, those excerpts, the user question, and the answer are sent to `LANGFUSE_BASE_URL`. Keep tracing disabled for data that the configured Langfuse deployment is not permitted to receive. Missing credentials, a missing SDK, initialization failures, and exporter failures all fall back safely without making the API request fail.
 
 ## Evaluation dataset
 
