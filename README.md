@@ -1,155 +1,156 @@
 # OpsRAG
 
-[![Tests](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml)
+[![Testler](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml)
 
-A compact, production-oriented technical knowledge assistant with hybrid retrieval,
-cross-encoder reranking, verified source citations, offline evaluation, optional
-observability, and a polished web interface.
+Hibrit bilgi getirme, cross-encoder reranking, doğrulanmış kaynak atıfları,
+çevrimdışı değerlendirme, isteğe bağlı gözlemlenebilirlik ve profesyonel bir web
+arayüzü sunan, üretim odaklı ve kompakt bir teknik bilgi asistanı.
 
-> **Status:** Milestone 17 · Python 3.11+ · 176 automated tests · Dockerized local stack
+> **Durum:** 17. aşama · Python 3.11+ · 176 otomatik test · Docker ile çalışan yerel sistem
 
-## Why OpsRAG?
+## OpsRAG neden var?
 
-Technical teams often have the answer to an incident somewhere in a runbook,
-deployment guide, or troubleshooting note, but finding the right passage quickly
-is difficult. OpsRAG turns a small private document collection into a searchable
-assistant that:
+Teknik ekiplerin bir olay veya arıza için ihtiyaç duyduğu cevap çoğu zaman bir
+runbook, dağıtım kılavuzu ya da sorun giderme notunun içinde bulunur. Asıl zorluk,
+doğru bölümü hızlıca bulmaktır. OpsRAG, küçük ve özel bir doküman koleksiyonunu
+aşağıdaki özelliklere sahip aranabilir bir asistana dönüştürür:
 
-- retrieves evidence before answering technical questions;
-- exposes the source records used by the answer;
-- rejects missing, malformed, or invented citations;
-- distinguishes knowledge-base questions from clearly general messages; and
-- measures retrieval and answer quality instead of relying on a demo alone.
+- teknik soruları cevaplamadan önce ilgili kanıtları getirir;
+- cevapta kullanılan kaynak kayıtlarını kullanıcıya gösterir;
+- eksik, hatalı biçimlendirilmiş veya uydurulmuş atıfları reddeder;
+- bilgi tabanı sorularını açıkça genel olan mesajlardan ayırır; ve
+- yalnızca bir demo sunmak yerine getirim ve cevap kalitesini ölçer.
 
-The project is intentionally compact. Its purpose is to demonstrate practical RAG
-engineering—from ingestion through evaluation and delivery—without hiding the
-important decisions inside a notebook or adding unrelated distributed systems.
+Proje bilinçli olarak kompakt tutulmuştur. Amacı; gereksiz dağıtık sistemler
+eklemeden ve önemli kararları bir notebook içinde gizlemeden, veri alımından
+değerlendirme ve teslimata kadar gerçek RAG mühendisliği pratiklerini
+göstermektir.
 
-## Product walkthrough
+## Ürün görünümü
 
-### Landing experience
+### Açılış ekranı
 
-![OpsRAG landing page](docs/images/opsrag-home.png)
+![OpsRAG açılış ekranı](docs/images/opsrag-home.png)
 
-*Responsive landing page with example incident prompts and a concise view of
-the answer pipeline.*
+*Örnek olay soruları ve cevap üretim sürecinin kısa özetiyle duyarlı ürün açılış
+ekranı.*
 
-### Grounded answer
+### Kaynaklı cevap
 
-![OpsRAG grounded PostgreSQL answer](docs/images/opsrag-grounded-answer.png)
+![OpsRAG kaynaklı PostgreSQL cevabı](docs/images/opsrag-grounded-answer.png)
 
-*A real Docker Compose troubleshooting question routed through hybrid retrieval
-and returned with two citations, five contexts, and retrieval metadata.*
+*Gerçek bir Docker Compose sorun giderme sorusu hibrit getirimden geçirilir; iki
+atıf, beş bağlam ve getirim metadatasıyla birlikte döndürülür.*
 
-### Source evidence
+### Kaynak kanıtları
 
-![OpsRAG expanded source evidence](docs/images/opsrag-source-evidence.png)
+![OpsRAG genişletilmiş kaynak kanıtları](docs/images/opsrag-source-evidence.png)
 
-*Expanded evidence cards expose retrieval-owned document, section, chunk, and
-relevance details for every cited source.*
+*Genişletilmiş kanıt kartları, atıf yapılan her kaynak için doküman, bölüm,
+chunk ve ilgililik ayrıntılarını gösterir.*
 
-## Key features
+## Temel özellikler
 
-- Markdown, TXT, and text-based PDF ingestion with deterministic cleaning
-- Section-aware 600-token chunks with stable identifiers and overlap
-- Sentence Transformers embeddings stored in Qdrant
-- BM25 lexical retrieval for commands, error codes, and exact technical terms
-- Reciprocal Rank Fusion across dense and sparse rankings
-- Cross-encoder reranking before final context construction
-- Grounded answers with request-local source identifiers such as `[S1]`
-- Citation validation and API-owned source metadata
-- Bounded LangGraph routing with knowledge and general branches
-- OpenAI Responses API and free local Ollama generation adapters
-- FastAPI backend and responsive Streamlit product interface
-- RAGAS evaluation across dense, hybrid, and reranked configurations
-- Optional, fail-open Langfuse traces with explicit privacy guidance
-- CPU-only, non-root Docker images and health-gated Docker Compose services
-- 176 offline unit and integration tests
-- GitHub Actions tests on every push and pull request targeting `main`
+- Deterministik temizleme ile Markdown, TXT ve metin tabanlı PDF veri alımı
+- Bölüm bilgisini koruyan, sabit kimlikli ve örtüşmeli 600 token'lık chunk'lar
+- Qdrant üzerinde saklanan Sentence Transformers embedding'leri
+- Komutlar, hata kodları ve birebir teknik terimler için BM25 sözcüksel getirim
+- Dense ve sparse sıralamalar üzerinde Reciprocal Rank Fusion
+- Nihai bağlam oluşturulmadan önce cross-encoder reranking
+- `[S1]` gibi istek kapsamlı kaynak kimlikleri içeren dayanaklı cevaplar
+- Atıf doğrulaması ve API tarafından sahiplenilen kaynak metadatası
+- Bilgi tabanı ve genel mesaj yollarına sahip sınırlı LangGraph akışı
+- OpenAI Responses API ve ücretsiz yerel Ollama üretim adaptörleri
+- FastAPI backend ve duyarlı Streamlit ürün arayüzü
+- Dense, hibrit ve reranking uygulanmış yapılandırmalar için RAGAS değerlendirmesi
+- Açık gizlilik uyarılarıyla isteğe bağlı, fail-open Langfuse izleri
+- CPU-only, root olmayan Docker imajları ve sağlık kontrollü Docker Compose servisleri
+- Çevrimdışı çalışan 176 birim ve entegrasyon testi
+- `main` dalını hedefleyen her push ve pull request için GitHub Actions testleri
 
-## Architecture
+## Mimari
 
 ```mermaid
 flowchart TD
-    User[User] --> UI[Streamlit UI]
+    User[Kullanıcı] --> UI[Streamlit arayüzü]
     UI --> API[FastAPI /api/v1/ask]
-    API --> Router[LangGraph query router]
+    API --> Router[LangGraph soru yönlendiricisi]
 
-    Router -->|General message| GeneralLLM[Direct LLM answer]
-    Router -->|Knowledge question| Dense[Dense retrieval]
-    Router -->|Knowledge question| Sparse[BM25 retrieval]
+    Router -->|Genel mesaj| GeneralLLM[Doğrudan LLM cevabı]
+    Router -->|Bilgi tabanı sorusu| Dense[Dense getirim]
+    Router -->|Bilgi tabanı sorusu| Sparse[BM25 getirim]
 
     Dense --> Qdrant[(Qdrant)]
-    Sparse --> Chunks[(Processed JSONL chunks)]
+    Sparse --> Chunks[(İşlenmiş JSONL chunk'ları)]
     Dense --> RRF[Reciprocal Rank Fusion]
     Sparse --> RRF
     RRF --> Reranker[Cross-encoder reranker]
-    Reranker --> Context[Top grounded context]
-    Context --> GroundedLLM[LLM generation]
-    GroundedLLM --> Attribution[Citation validation]
-    Attribution --> APIResponse[Answer + sources + metadata]
+    Reranker --> Context[En ilgili bağlam]
+    Context --> GroundedLLM[LLM cevap üretimi]
+    GroundedLLM --> Attribution[Atıf doğrulaması]
+    Attribution --> APIResponse[Cevap + kaynaklar + metadata]
     GeneralLLM --> APIResponse
     APIResponse --> UI
 
-    RawDocs[Markdown / TXT / PDF] --> Ingestion[Load + clean + chunk]
+    RawDocs[Markdown / TXT / PDF] --> Ingestion[Yükle + temizle + parçala]
     Ingestion --> Chunks
-    Ingestion --> Embeddings[Document embeddings]
+    Ingestion --> Embeddings[Doküman embedding'leri]
     Embeddings --> Qdrant
 
-    Router -. optional traces .-> Langfuse[Langfuse]
-    Reranker -. optional traces .-> Langfuse
-    GroundedLLM -. optional traces .-> Langfuse
+    Router -. isteğe bağlı izler .-> Langfuse[Langfuse]
+    Reranker -. isteğe bağlı izler .-> Langfuse
+    GroundedLLM -. isteğe bağlı izler .-> Langfuse
 ```
 
-Knowledge requests follow a single bounded path:
+Bilgi tabanı istekleri tek ve sınırlı bir yol izler:
 
 ```text
-Dense Qdrant search + BM25
-        -> RRF fusion
+Dense Qdrant araması + BM25
+        -> RRF birleştirme
         -> cross-encoder reranking
-        -> grounded prompt
+        -> dayanaklı prompt
         -> LLM
-        -> citation validation
-        -> public API response
+        -> atıf doğrulaması
+        -> herkese açık API cevabı
 ```
 
-Clearly general messages bypass retrieval. Ambiguous or technical questions
-default to the knowledge path, which is the safer behavior for a private
-technical assistant.
+Açıkça genel olan mesajlar getirim katmanını kullanmaz. Belirsiz veya teknik
+sorular bilgi tabanı yoluna yönlendirilir; bu, özel bir teknik asistan için daha
+güvenli davranıştır.
 
-See [the architecture guide](docs/architecture.md) for detailed module
-boundaries, confidence semantics, trace structure, and data flow.
+Modül sınırları, güven skoru anlamı, iz yapısı ve veri akışı için
+[mimari kılavuzuna](docs/architecture.md) bakabilirsin.
 
-## Technology stack
+## Teknoloji yığını
 
-| Area | Technology | Purpose |
+| Alan | Teknoloji | Kullanım amacı |
 | --- | --- | --- |
-| Language | Python 3.11+ | Application, ingestion, evaluation, and tests |
-| API | FastAPI + Uvicorn | Validated HTTP boundary and runtime |
-| Workflow | LangGraph | Bounded query classification and routing |
-| Vector database | Qdrant | Dense vector storage and similarity search |
-| Dense retrieval | Sentence Transformers | Document and query embeddings |
-| Sparse retrieval | rank-bm25 | Exact-term lexical retrieval |
-| Fusion | Reciprocal Rank Fusion | Rank-scale-independent hybrid retrieval |
-| Reranking | CrossEncoder | Query-aware final context selection |
-| LLM providers | Ollama / OpenAI | Local-free or hosted answer generation |
-| Evaluation | RAGAS | Faithfulness, relevance, precision, and recall |
-| Observability | Langfuse | Optional nested request traces |
-| Frontend | Streamlit | Product-style browser interface |
-| Validation | Pydantic Settings | Typed configuration and API contracts |
-| Tests | Pytest + HTTPX | Unit, integration, HTTP, and UI checks |
-| Delivery | Docker Compose | Qdrant, API, and frontend local stack |
-| CI | GitHub Actions | Automatic offline tests on pushes and PRs |
+| Dil | Python 3.11+ | Uygulama, veri alımı, değerlendirme ve testler |
+| API | FastAPI + Uvicorn | Doğrulanmış HTTP sınırı ve çalışma zamanı |
+| Akış | LangGraph | Sınırlı soru sınıflandırma ve yönlendirme |
+| Vektör veritabanı | Qdrant | Dense vektör saklama ve benzerlik araması |
+| Dense getirim | Sentence Transformers | Doküman ve sorgu embedding'leri |
+| Sparse getirim | rank-bm25 | Birebir terimlere dayalı sözcüksel getirim |
+| Birleştirme | Reciprocal Rank Fusion | Skor ölçeğinden bağımsız hibrit getirim |
+| Yeniden sıralama | CrossEncoder | Sorguya duyarlı nihai bağlam seçimi |
+| LLM sağlayıcıları | Ollama / OpenAI | Yerel ücretsiz veya uzak cevap üretimi |
+| Değerlendirme | RAGAS | Dayanaklılık, ilgililik, kesinlik ve kapsam |
+| Gözlemlenebilirlik | Langfuse | İsteğe bağlı iç içe istek izleri |
+| Frontend | Streamlit | Ürün benzeri tarayıcı arayüzü |
+| Doğrulama | Pydantic Settings | Tip kontrollü yapılandırma ve API sözleşmeleri |
+| Test | Pytest + HTTPX | Birim, entegrasyon, HTTP ve arayüz testleri |
+| Çalıştırma | Docker Compose | Yerel Qdrant, API ve frontend sistemi |
+| CI | GitHub Actions | Push ve pull request'lerde otomatik test |
 
-## Quick start with Docker
+## Docker ile hızlı başlangıç
 
-### Prerequisites
+### Ön gereksinimler
 
-- Docker Desktop with Compose
-- Ollama for the free local profile, or an OpenAI API key
+- Docker Desktop ve Compose
+- Ücretsiz yerel profil için Ollama veya bir OpenAI API anahtarı
 - Git
 
-Clone and configure the project:
+Projeyi klonla ve yapılandırma dosyasını oluştur:
 
 ```bash
 git clone https://github.com/miracozmen23/opsrag.git
@@ -157,9 +158,10 @@ cd opsrag
 cp .env.example .env
 ```
 
-On Windows PowerShell, use `Copy-Item .env.example .env` instead of `cp`.
+Windows PowerShell kullanıyorsan `cp` yerine
+`Copy-Item .env.example .env` komutunu çalıştır.
 
-For the free local profile, set these values in `.env`:
+Ücretsiz yerel profil için `.env` içindeki şu değerleri ayarla:
 
 ```env
 LLM_PROVIDER=ollama
@@ -167,51 +169,51 @@ LLM_MODEL=qwen3.5:2b
 OLLAMA_BASE_URL=http://localhost:11434
 ```
 
-Pull the local model and start the stack:
+Yerel modeli indir ve sistemi başlat:
 
 ```bash
 ollama pull qwen3.5:2b
 docker compose up --build -d
 ```
 
-Ingest the sample knowledge base and build the Qdrant index:
+Örnek bilgi tabanını işle ve Qdrant indeksini oluştur:
 
 ```bash
 docker compose run --rm api python scripts/ingest.py
 docker compose run --rm api python scripts/index.py
 ```
 
-Open the services:
+Servisleri aç:
 
 - Streamlit: <http://localhost:8501>
-- FastAPI documentation: <http://localhost:8000/docs>
-- Health check: <http://localhost:8000/health>
-- Qdrant dashboard: <http://localhost:6333/dashboard>
+- FastAPI dokümantasyonu: <http://localhost:8000/docs>
+- Sağlık kontrolü: <http://localhost:8000/health>
+- Qdrant paneli: <http://localhost:6333/dashboard>
 
-Check health and logs:
+Sağlık durumunu ve logları kontrol et:
 
 ```bash
 docker compose ps
 docker compose logs -f api frontend
 ```
 
-Stop containers without deleting the bind-mounted project data:
+Bind mount ile korunan proje verilerini silmeden konteynerleri durdur:
 
 ```bash
 docker compose down
 ```
 
-Compose publishes ports only on localhost. It reaches host Ollama through
-`host.docker.internal`. On native Linux, Ollama may also need
-`OLLAMA_HOST=0.0.0.0:11434`.
+Compose portları yalnızca localhost üzerinde yayınlar. Host makinedeki Ollama'ya
+`host.docker.internal` üzerinden ulaşır. Native Linux üzerinde Ollama için
+ayrıca `OLLAMA_HOST=0.0.0.0:11434` ayarı gerekebilir.
 
-Model files, processed documents, and Qdrant data remain on the repository drive
-through `.cache`, `data`, and `qdrant_storage` bind mounts. These growing
-artifacts are excluded from Git.
+Model dosyaları, işlenmiş dokümanlar ve Qdrant verileri sırasıyla `.cache`,
+`data` ve `qdrant_storage` bind mount'larıyla proje sürücüsünde kalır. Büyüyen
+bu dosyalar Git kapsamı dışındadır.
 
-## Local development
+## Yerel geliştirme
 
-Create and activate a virtual environment:
+Sanal ortamı oluştur ve etkinleştir:
 
 ```bash
 python -m venv .venv
@@ -227,7 +229,7 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Install CPU-only PyTorch and the project dependencies:
+CPU-only PyTorch ve proje bağımlılıklarını kur:
 
 ```bash
 python -m pip install --upgrade pip
@@ -236,13 +238,13 @@ python -m pip install -e ".[dev]"
 cp .env.example .env
 ```
 
-Start only Qdrant with Docker:
+Yalnızca Qdrant servisini Docker ile başlat:
 
 ```bash
 docker compose up -d qdrant
 ```
 
-Build the index, start the API, and then start Streamlit in a second terminal:
+İndeksi oluştur, API'yi başlat ve ikinci bir terminalde Streamlit'i çalıştır:
 
 ```bash
 python scripts/ingest.py
@@ -254,103 +256,104 @@ python -m uvicorn app.main:app --reload
 python -m streamlit run frontend/streamlit_app.py
 ```
 
-The first model-backed command downloads embedding and reranker files to
-`MODEL_CACHE_DIR`, which defaults to the repository-local
-`.cache/huggingface` directory.
+Model kullanan ilk komut, embedding ve reranker dosyalarını `MODEL_CACHE_DIR`
+altına indirir. Bu dizinin varsayılan değeri proje içindeki
+`.cache/huggingface` klasörüdür.
 
-## Environment variables
+## Ortam değişkenleri
 
-Copy [`.env.example`](.env.example) to `.env`. Never commit the resulting
-file or any real credentials.
+[`.env.example`](.env.example) dosyasını `.env` adıyla kopyala. Oluşan dosyayı
+ve gerçek kimlik bilgilerini hiçbir zaman Git'e ekleme.
 
-### Application and ingestion
+### Uygulama ve veri hazırlama
 
-| Variable | Default | Purpose |
+| Değişken | Varsayılan | Amaç |
 | --- | --- | --- |
-| `APP_ENV` | `development` | Runtime environment label |
-| `LOG_LEVEL` | `INFO` | Application logging level |
-| `CHUNK_SIZE_TOKENS` | `600` | Maximum deterministic chunk size |
-| `CHUNK_OVERLAP_TOKENS` | `75` | Token overlap between adjacent chunks |
-| `TOKENIZER_STRATEGY` | `regex_v1` | Stable tokenizer strategy |
-| `PROCESSED_CHUNKS_PATH` | `data/processed/chunks.jsonl` | Generated chunk artifact |
-| `MODEL_CACHE_DIR` | `.cache/huggingface` | Local model cache |
+| `APP_ENV` | `development` | Çalışma ortamı etiketi |
+| `LOG_LEVEL` | `INFO` | Uygulama log seviyesi |
+| `CHUNK_SIZE_TOKENS` | `600` | Maksimum deterministik chunk boyutu |
+| `CHUNK_OVERLAP_TOKENS` | `75` | Komşu chunk'lar arasındaki token örtüşmesi |
+| `TOKENIZER_STRATEGY` | `regex_v1` | Sabit tokenizer stratejisi |
+| `PROCESSED_CHUNKS_PATH` | `data/processed/chunks.jsonl` | Oluşturulan chunk çıktısı |
+| `MODEL_CACHE_DIR` | `.cache/huggingface` | Yerel model önbelleği |
 
-### Retrieval
+### Bilgi getirme
 
-| Variable | Default | Purpose |
+| Değişken | Varsayılan | Amaç |
 | --- | --- | --- |
-| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Dense embedding model |
-| `EMBEDDING_DEVICE` | `cpu` | Embedding execution device |
-| `EMBEDDING_BATCH_SIZE` | `32` | Embedding batch size |
-| `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L6-v2` | Cross-encoder model |
-| `RERANKER_DEVICE` | `cpu` | Reranker execution device |
-| `RERANKER_BATCH_SIZE` | `16` | Reranker batch size |
-| `QDRANT_URL` | `http://localhost:6333` | Qdrant endpoint |
-| `QDRANT_API_KEY` | empty | Optional Qdrant credential |
-| `QDRANT_COLLECTION` | `opsrag_documents` | Vector collection |
-| `QDRANT_TIMEOUT_SECONDS` | `10` | Qdrant request timeout |
-| `QDRANT_BATCH_SIZE` | `64` | Indexing upsert batch size |
-| `TOP_K_DENSE` | `10` | Dense candidates |
-| `TOP_K_SPARSE` | `10` | BM25 candidates |
-| `TOP_K_HYBRID` | `10` | Reranker candidate pool |
-| `TOP_K_RERANK` | `5` | Final prompt contexts |
-| `RRF_K` | `60` | Reciprocal Rank Fusion constant |
+| `EMBEDDING_MODEL` | `BAAI/bge-small-en-v1.5` | Dense embedding modeli |
+| `EMBEDDING_DEVICE` | `cpu` | Embedding çalışma aygıtı |
+| `EMBEDDING_BATCH_SIZE` | `32` | Embedding batch boyutu |
+| `RERANKER_MODEL` | `cross-encoder/ms-marco-MiniLM-L6-v2` | Cross-encoder modeli |
+| `RERANKER_DEVICE` | `cpu` | Reranker çalışma aygıtı |
+| `RERANKER_BATCH_SIZE` | `16` | Reranker batch boyutu |
+| `QDRANT_URL` | `http://localhost:6333` | Qdrant adresi |
+| `QDRANT_API_KEY` | boş | İsteğe bağlı Qdrant kimlik bilgisi |
+| `QDRANT_COLLECTION` | `opsrag_documents` | Vektör koleksiyonu |
+| `QDRANT_TIMEOUT_SECONDS` | `10` | Qdrant istek zaman aşımı |
+| `QDRANT_BATCH_SIZE` | `64` | İndeksleme upsert batch boyutu |
+| `TOP_K_DENSE` | `10` | Dense aday sayısı |
+| `TOP_K_SPARSE` | `10` | BM25 aday sayısı |
+| `TOP_K_HYBRID` | `10` | Reranker aday havuzu |
+| `TOP_K_RERANK` | `5` | Nihai prompt bağlamı sayısı |
+| `RRF_K` | `60` | Reciprocal Rank Fusion sabiti |
 
-### Generation and evaluation
+### Cevap üretimi ve değerlendirme
 
-| Variable | Default | Purpose |
+| Değişken | Varsayılan | Amaç |
 | --- | --- | --- |
-| `LLM_PROVIDER` | `openai` | `openai` or `ollama` |
-| `LLM_MODEL` | empty | Provider model name |
-| `LLM_API_KEY` | empty | Required only for OpenAI |
-| `LLM_TIMEOUT_SECONDS` | `30` | Answer request timeout |
-| `LLM_MAX_OUTPUT_TOKENS` | `800` | Answer output limit |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama endpoint |
-| `RAGAS_JUDGE_PROVIDER` | empty | Optional `openai` or `ollama` judge |
-| `RAGAS_JUDGE_MODEL` | empty | Judge model name |
-| `RAGAS_CACHE_DIR` | `.cache/ragas` | Evaluation model cache |
-| `RAGAS_TIMEOUT_SECONDS` | `60` | Per-metric timeout |
-| `RAGAS_MAX_RETRIES` | `3` | Metric retry count |
-| `RAGAS_MAX_OUTPUT_TOKENS` | `512` | Judge output limit |
+| `LLM_PROVIDER` | `openai` | `openai` veya `ollama` |
+| `LLM_MODEL` | boş | Sağlayıcı model adı |
+| `LLM_API_KEY` | boş | Yalnızca OpenAI için gerekli |
+| `LLM_TIMEOUT_SECONDS` | `30` | Cevap isteği zaman aşımı |
+| `LLM_MAX_OUTPUT_TOKENS` | `800` | Cevap çıktı sınırı |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Yerel Ollama adresi |
+| `RAGAS_JUDGE_PROVIDER` | boş | İsteğe bağlı `openai` veya `ollama` hakem |
+| `RAGAS_JUDGE_MODEL` | boş | Hakem model adı |
+| `RAGAS_CACHE_DIR` | `.cache/ragas` | Değerlendirme modeli önbelleği |
+| `RAGAS_TIMEOUT_SECONDS` | `60` | Metrik başına zaman aşımı |
+| `RAGAS_MAX_RETRIES` | `3` | Metrik yeniden deneme sayısı |
+| `RAGAS_MAX_OUTPUT_TOKENS` | `512` | Hakem çıktı sınırı |
 
-### Observability and frontend
+### Gözlemlenebilirlik ve frontend
 
-| Variable | Default | Purpose |
+| Değişken | Varsayılan | Amaç |
 | --- | --- | --- |
-| `LANGFUSE_ENABLED` | `false` | Explicit tracing opt-in |
-| `LANGFUSE_PUBLIC_KEY` | empty | Langfuse project key |
-| `LANGFUSE_SECRET_KEY` | empty | Langfuse secret |
-| `LANGFUSE_BASE_URL` | `https://cloud.langfuse.com` | Approved trace destination |
-| `LANGFUSE_SAMPLE_RATE` | `1.0` | Fraction of requests traced |
-| `OPSRAG_API_BASE_URL` | `http://localhost:8000` | Streamlit backend |
-| `OPSRAG_API_TIMEOUT_SECONDS` | `300` | UI request timeout |
+| `LANGFUSE_ENABLED` | `false` | Açık izleme onayı |
+| `LANGFUSE_PUBLIC_KEY` | boş | Langfuse proje anahtarı |
+| `LANGFUSE_SECRET_KEY` | boş | Langfuse gizli anahtarı |
+| `LANGFUSE_BASE_URL` | `https://cloud.langfuse.com` | Onaylanmış iz hedefi |
+| `LANGFUSE_SAMPLE_RATE` | `1.0` | İzlenen istek oranı |
+| `OPSRAG_API_BASE_URL` | `http://localhost:8000` | Streamlit backend adresi |
+| `OPSRAG_API_TIMEOUT_SECONDS` | `300` | Arayüz istek zaman aşımı |
 
-Relative data and cache paths resolve from the repository root, not from the
-terminal's current directory.
+Göreli veri ve önbellek yolları terminalin bulunduğu dizine göre değil, proje
+köküne göre çözülür.
 
-## Ingestion and indexing
+## Doküman işleme ve indeksleme
 
-The sample corpus lives in `data/raw`. Add Markdown, TXT, or text-based PDF
-files there, then run:
+Örnek doküman koleksiyonu `data/raw` altında bulunur. Bu klasöre Markdown, TXT
+veya metin tabanlı PDF dosyaları ekledikten sonra şu komutları çalıştır:
 
 ```bash
 python scripts/ingest.py
 python scripts/index.py
 ```
 
-Ingestion loads and cleans supported documents, preserves title/section/page
-metadata, creates deterministic chunks, and writes
-`data/processed/chunks.jsonl`. Indexing embeds those chunks and replaces only
-points belonging to the indexed document IDs.
+Veri alım süreci desteklenen dokümanları yükler ve temizler; başlık, bölüm ve
+sayfa metadatasını korur; deterministik chunk'lar oluşturur ve sonucu
+`data/processed/chunks.jsonl` dosyasına yazar. İndeksleme aşaması bu chunk'ları
+embedding'e dönüştürür ve yalnızca indekslenen doküman kimliklerine ait noktaları
+yeniler.
 
-Collection recreation is never implicit. Use this only when an incompatible
-embedding dimension or intentional reset requires it:
+Koleksiyon hiçbir zaman kendiliğinden yeniden oluşturulmaz. Uyumsuz embedding
+boyutu veya bilinçli bir sıfırlama gerektiğinde yalnızca şu komutu kullan:
 
 ```bash
 python scripts/index.py --recreate
 ```
 
-Useful retrieval checks:
+Kullanışlı getirim kontrolleri:
 
 ```bash
 python scripts/search.py "PostgreSQL connection refused"
@@ -359,43 +362,43 @@ python scripts/hybrid_search.py "HTTP 503 Qdrant"
 python scripts/rerank_search.py "When should an API return 4xx instead of 5xx?"
 ```
 
-## Using the application
+## Uygulamanın kullanımı
 
 ### Streamlit
 
-Open <http://localhost:8501>, choose an example or enter a question, and select
-**Generate grounded answer**. The interface displays:
+<http://localhost:8501> adresini aç, örneklerden birini seç veya kendi sorunu
+gir ve **Generate grounded answer** düğmesine bas. Arayüz şunları gösterir:
 
-- the validated answer;
-- retrieval confidence;
-- selected route and retrieval method;
-- retrieved context count; and
-- expandable source evidence with relevance indicators.
+- doğrulanmış cevap;
+- getirim güven skoru;
+- seçilen yönlendirme ve getirim yöntemi;
+- getirilen bağlam sayısı; ve
+- ilgililik göstergeleriyle genişletilebilir kaynak kanıtları.
 
-If the API is stopped, times out, or violates the response contract, Streamlit
-shows a safe error rather than an application traceback.
+API durduğunda, zaman aşımına uğradığında veya cevap sözleşmesini ihlal ettiğinde
+Streamlit uygulama traceback'i yerine güvenli bir hata mesajı gösterir.
 
 ### API
 
-Health check:
+Sağlık kontrolü:
 
 ```bash
 curl http://localhost:8000/health
 ```
 
-Knowledge question:
+Bilgi tabanı sorusu:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/ask \
   -H "Content-Type: application/json" \
-  -d '{"question":"Why does PostgreSQL return connection refused in Docker Compose?"}'
+  -d '{"question":"Docker Compose içinde PostgreSQL neden connection refused hatası döndürüyor?"}'
 ```
 
-Example response:
+Örnek cevap:
 
 ```json
 {
-  "answer": "Inside the application container, use the PostgreSQL Compose service name and container port [S1].",
+  "answer": "Uygulama konteynerinden PostgreSQL Compose servis adını ve konteyner portunu kullanın [S1].",
   "sources": [
     {
       "source_id": "S1",
@@ -418,127 +421,133 @@ Example response:
 }
 ```
 
-General messages return `route="general"`, `retrieval_method="not_used"`,
-no sources, and zero retrieval confidence.
+Genel mesajlar `route="general"`, `retrieval_method="not_used"`, boş kaynak
+listesi ve sıfır getirim güven skoru döndürür.
 
-## Source grounding and confidence
+## Kaynak dayanağı ve güven skoru
 
-Before generation, retrieved chunks are grouped by original source, title,
-section, and page. Each group receives a request-local identifier such as
-`S1`. The prompt contains only those identifiers and retrieval-owned metadata.
+Cevap üretiminden önce getirilen chunk'lar özgün kaynak, başlık, bölüm ve sayfa
+bilgilerine göre gruplanır. Her gruba `S1` gibi istek kapsamlı bir kimlik atanır.
+Prompt yalnızca bu kimlikleri ve getirim katmanına ait metadatayı içerir.
 
-After generation, OpsRAG:
+Cevap üretiminden sonra OpsRAG:
 
-1. rejects answers without a citation when context was used;
-2. rejects malformed or unknown source identifiers;
-3. removes repeated citations; and
-4. returns only the source records cited by the answer.
+1. bağlam kullanıldığı halde atıf içermeyen cevapları reddeder;
+2. hatalı biçimlendirilmiş veya bilinmeyen kaynak kimliklerini reddeder;
+3. tekrarlanan atıfları kaldırır; ve
+4. yalnızca cevapta atıf yapılan kaynak kayıtlarını döndürür.
 
-The model cannot invent a document filename that appears in the API response.
-Public source metadata always comes from the retrieved chunk payload.
+Model, API cevabında görünecek bir doküman adını uyduramaz. Herkese açık kaynak
+metadatası her zaman getirilen chunk payload'ından gelir.
 
-For reranked results, the public relevance score is the sigmoid of the
-cross-encoder logit. `retrieval_confidence` is the best relevance score among
-the sources actually cited. It is a retrieval heuristic, not a calibrated
-probability and not an LLM self-assessment.
+Reranking uygulanmış sonuçlarda herkese açık ilgililik skoru, cross-encoder
+logit'inin sigmoid değeridir. `retrieval_confidence`, cevapta kullanılan
+kaynaklar arasındaki en yüksek ilgililik skorudur. Bu değer kalibre edilmiş bir
+olasılık veya LLM öz değerlendirmesi değil, bir getirim sezgisidir.
 
-## Evaluation
+## Değerlendirme
 
-The version-controlled benchmark in
-[`evaluation/questions.jsonl`](evaluation/questions.jsonl) contains 36
-manually reviewable cases:
+Sürüm kontrolü altındaki
+[`evaluation/questions.jsonl`](evaluation/questions.jsonl) benchmark'ı,
+elle incelenebilir 36 senaryo içerir:
 
-- 30 answerable cases grounded in the five sample documents;
-- 6 insufficient-context cases;
-- 6 cases in each of semantic, exact-keyword, error-code, multi-sentence,
-  ambiguous, and insufficient-context categories.
+- beş örnek dokümana dayanan 30 cevaplanabilir senaryo;
+- 6 yetersiz bağlam senaryosu;
+- semantic, exact-keyword, error-code, multi-sentence, ambiguous ve
+  insufficient-context kategorilerinin her birinde 6 senaryo.
 
-Validate the benchmark without calling a model:
+Bir model çağırmadan benchmark yapısını doğrula:
 
 ```bash
 python scripts/validate_evaluation.py
 ```
 
-Install the optional RAGAS evaluation stack before the first scored run:
+İlk skorlu çalıştırmadan önce isteğe bağlı RAGAS değerlendirme paketini kur:
 
 ```bash
 python -m pip install -e ".[evaluation]"
 ```
 
-Run dense, hybrid, and hybrid-plus-reranking experiments:
+Dense, hibrit ve hibrit + reranking deneylerini çalıştır:
 
 ```bash
 python scripts/evaluate.py
 ```
 
-The runner captures generated answers, retrieved contexts, citations, latency,
-expected-source hits, answerability, and RAGAS faithfulness, answer relevance,
-context precision, and context recall. Failures and undefined metrics remain
-visible and are excluded from means; they are never silently converted to zero.
+Runner; üretilen cevapları, getirilen bağlamları, atıfları, gecikmeyi, beklenen
+kaynak eşleşmesini, cevaplanabilirliği ve RAGAS faithfulness, answer relevance,
+context precision ve context recall metriklerini kaydeder. Başarısız veya
+tanımsız metrikler görünür kalır ve ortalamalara dahil edilmez; sessizce sıfıra
+dönüştürülmez.
 
-Runs involving OpenAI require `--confirm-paid-run`. The checked-in baseline
-used Ollama for both answering and judging and made no paid API calls.
+OpenAI kullanan çalışmalar `--confirm-paid-run` onayı gerektirir. Depodaki temel
+sonuç hem cevap üretimi hem de değerlendirme için Ollama kullanmıştır ve ücretli
+API çağrısı yapmamıştır.
 
-### Verified local baseline
+### Doğrulanmış yerel temel sonuçlar
 
-Generated on 2026-08-27 with 108 executions (36 cases × 3 retrieval
-configurations), Ollama `qwen3.5:2b`, RAGAS 0.4.3, and
-`BAAI/bge-small-en-v1.5` embeddings:
+Sonuçlar 27 Ağustos 2026 tarihinde; 108 çalıştırma (36 senaryo × 3 getirim
+yapılandırması), Ollama `qwen3.5:2b`, RAGAS 0.4.3 ve
+`BAAI/bge-small-en-v1.5` embedding modeliyle üretilmiştir:
 
-| Configuration | App failures | Expected-source hit | Answerability | Answer relevance | Context precision | Context recall | Mean latency |
+| Yapılandırma | Uygulama hatası | Beklenen kaynak | Cevaplanabilirlik | Answer relevance | Context precision | Context recall | Ortalama gecikme |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Dense | 3/36 | 93.33% | 88.89% | 0.7424 | 0.8215 | 0.8177 | 6.56 s |
-| Hybrid | 3/36 | 90.00% | 88.89% | 0.7285 | 0.7841 | 0.7903 | 6.32 s |
-| Hybrid + reranking | 3/36 | 86.67% | **91.67%** | **0.7452** | 0.7747 | 0.7833 | 10.58 s |
+| Dense | 3/36 | %93,33 | %88,89 | 0,7424 | 0,8215 | 0,8177 | 6,56 sn |
+| Hibrit | 3/36 | %90,00 | %88,89 | 0,7285 | 0,7841 | 0,7903 | 6,32 sn |
+| Hibrit + reranking | 3/36 | %86,67 | **%91,67** | **0,7452** | 0,7747 | 0,7833 | 10,58 sn |
 
-These results are a transparent local baseline, not a claim that reranking wins
-every metric. The small judge produced incomplete faithfulness outputs:
-faithfulness was scored for only 11 dense, 13 hybrid, and 11 reranked cases.
-Those coverage failures remain in
-[`evaluation/results.json`](evaluation/results.json).
+Bu sonuçlar şeffaf bir yerel temel ölçümdür; reranking'in her metrikte üstün
+olduğu iddia edilmez. Küçük hakem model eksik faithfulness çıktıları üretmiştir:
+faithfulness metriği dense için yalnızca 11, hibrit için 13 ve reranking
+uygulanmış yapılandırma için 11 senaryoda skorlanabilmiştir. Kapsama hataları
+[`evaluation/results.json`](evaluation/results.json) içinde korunur.
 
-See [the evaluation guide](evaluation/README.md) for schemas, per-metric scored
-counts, review instructions, and result provenance.
+Şemalar, metrik başına skorlanan senaryo sayıları, inceleme adımları ve sonuç
+kaynağı için [değerlendirme kılavuzuna](evaluation/README.md) bakabilirsin.
 
-## Tests and CI
+## Testler ve CI
 
-Run the complete offline suite:
+Çevrimdışı test paketinin tamamını çalıştır:
 
 ```bash
 python -m pytest
 ```
 
-![OpsRAG test suite output](docs/images/opsrag-tests.png)
+![OpsRAG test paketi çıktısı](docs/images/opsrag-tests.png)
 
-*The complete local suite passes 176 unit and integration tests.*
+*Yerel test paketindeki 176 birim ve entegrasyon testinin tamamı başarılıdır.*
 
-The 176 tests cover:
+176 test şunları kapsar:
 
-- cleaning, loading, deterministic chunking, and JSONL output;
-- Qdrant storage, indexing, and dense retrieval;
-- BM25, RRF, deduplication, and reranking;
-- prompt formatting, source grouping, and citation validation;
-- router and RAG pipeline behavior;
-- OpenAI, Ollama, configuration, and observability boundaries;
-- FastAPI contracts and a real HTTP client/server boundary;
-- Streamlit interactions; and
-- an in-memory Qdrant-to-FastAPI end-to-end retrieval path.
+- temizleme, yükleme, deterministik chunk oluşturma ve JSONL çıktısı;
+- Qdrant saklama, indeksleme ve dense getirim;
+- BM25, RRF, deduplication ve reranking;
+- prompt biçimlendirme, kaynak gruplama ve atıf doğrulaması;
+- yönlendirici ve RAG pipeline davranışı;
+- OpenAI, Ollama, yapılandırma ve gözlemlenebilirlik sınırları;
+- FastAPI sözleşmeleri ve gerçek HTTP istemci/sunucu sınırı;
+- Streamlit etkileşimleri; ve
+- bellek içi Qdrant'tan FastAPI'ye uzanan uçtan uca getirim yolu.
 
-Embeddings, reranking, and generation use deterministic substitutes in the
-deepest integration test. Storage, indexing, dense search, BM25, RRF,
-orchestration, grounding, LangGraph, and FastAPI serialization remain real.
-No test needs an API key, internet connection, model download, or paid request.
+En derin entegrasyon testinde embedding, reranking ve cevap üretimi için
+deterministik test uygulamaları kullanılır. Saklama, indeksleme, dense arama,
+BM25, RRF, orkestrasyon, dayanak oluşturma, LangGraph ve FastAPI serileştirmesi
+gerçek bileşenlerle çalışır. Hiçbir test API anahtarı, internet bağlantısı,
+model indirme veya ücretli istek gerektirmez.
 
-Warnings fail the suite. GitHub Actions runs the same command with Python 3.11
-and CPU-only PyTorch on every push and pull request targeting `main`.
+Uyarılar test paketini başarısız yapar. GitHub Actions, aynı komutu Python 3.11
+ve CPU-only PyTorch ile `main` dalını hedefleyen her push ve pull request için
+çalıştırır.
 
-Current and historical runs are available on the
-[GitHub Actions workflow page](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml).
+Güncel ve geçmiş çalıştırmalara
+[GitHub Actions workflow sayfasından](https://github.com/miracozmen23/opsrag/actions/workflows/tests.yml)
+ulaşabilirsin.
 
-## Optional Langfuse observability
+## İsteğe bağlı Langfuse gözlemlenebilirliği
 
-Tracing is disabled by default. Enable it only when the configured Langfuse host
-is approved to receive questions and retrieved knowledge-base excerpts:
+İzleme varsayılan olarak kapalıdır. Yalnızca yapılandırılan Langfuse host'unun
+soruları ve getirilen bilgi tabanı parçalarını almasına izin verildiğinde
+etkinleştir:
 
 ```env
 LANGFUSE_ENABLED=true
@@ -548,7 +557,7 @@ LANGFUSE_BASE_URL=https://cloud.langfuse.com
 LANGFUSE_SAMPLE_RATE=1.0
 ```
 
-A knowledge request produces:
+Bir bilgi tabanı isteği şu iz yapısını üretir:
 
 ```text
 opsrag.query
@@ -559,93 +568,94 @@ opsrag.query
     `-- rag.attribution
 ```
 
-Missing credentials, an unavailable SDK, initialization errors, or exporter
-failures fall back safely without breaking the answer request.
+Eksik kimlik bilgileri, ulaşılamayan SDK, başlatma hataları veya exporter
+hataları güvenli biçimde no-op davranışına geçer ve cevap isteğini bozmaz.
 
-A Langfuse screenshot is intentionally omitted from the default README because
-tracing is opt-in and no synthetic trace is presented as a production record.
+Langfuse ekran görüntüsü varsayılan README'ye bilinçli olarak eklenmemiştir;
+çünkü izleme isteğe bağlıdır ve sentetik bir iz gerçek üretim kaydı gibi
+sunulmamıştır.
 
-## Repository structure
+## Depo yapısı
 
 ```text
 opsrag/
-|-- .github/workflows/tests.yml   # Push and pull-request CI
+|-- .github/workflows/tests.yml   # Push ve pull request CI
 |-- app/
-|   |-- api/                      # FastAPI routes, schemas, dependencies
-|   |-- core/                     # Settings, factories, logging
-|   |-- embeddings/               # Sentence Transformer adapter
-|   |-- evaluation/               # Dataset, runner, RAGAS, results
-|   |-- ingestion/                # Load, clean, chunk, index
-|   |-- llm/                      # Provider-neutral LLM adapters
-|   |-- observability/            # No-op and Langfuse tracing
-|   |-- rag/                      # Graph, prompts, attribution, pipeline
-|   `-- retrieval/                # Dense, BM25, RRF, reranking
-|-- data/raw/                     # Sample technical knowledge base
-|-- docs/                         # Architecture and README images
-|-- evaluation/                   # Benchmark, results, evaluation guide
-|-- frontend/                     # Streamlit UI, theme, API client
-|-- scripts/                      # Ingest, index, search, evaluate CLIs
-|-- tests/unit/                   # Focused deterministic tests
-|-- tests/integration/            # API, HTTP, Streamlit, full RAG path
-|-- .env.example                  # Safe configuration template
-|-- docker-compose.yml            # Qdrant, API, frontend topology
-|-- Dockerfile                    # Shared CPU-only application image
-|-- pyproject.toml                # Package and test configuration
+|   |-- api/                      # FastAPI route, şema ve bağımlılıkları
+|   |-- core/                     # Ayarlar, factory'ler ve loglama
+|   |-- embeddings/               # Sentence Transformer adaptörü
+|   |-- evaluation/               # Veri seti, runner, RAGAS ve sonuçlar
+|   |-- ingestion/                # Yükleme, temizleme, parçalama, indeksleme
+|   |-- llm/                      # Sağlayıcıdan bağımsız LLM adaptörleri
+|   |-- observability/            # No-op ve Langfuse izleme
+|   |-- rag/                      # Graph, prompt, atıf ve pipeline
+|   `-- retrieval/                # Dense, BM25, RRF ve reranking
+|-- data/raw/                     # Örnek teknik bilgi tabanı
+|-- docs/                         # Mimari ve README görselleri
+|-- evaluation/                   # Benchmark, sonuçlar ve değerlendirme kılavuzu
+|-- frontend/                     # Streamlit arayüzü, tema ve API istemcisi
+|-- scripts/                      # Veri alımı, indeksleme, arama ve değerlendirme CLI'ları
+|-- tests/unit/                   # Odaklı deterministik testler
+|-- tests/integration/            # API, HTTP, Streamlit ve tam RAG yolu
+|-- .env.example                  # Güvenli yapılandırma şablonu
+|-- docker-compose.yml            # Qdrant, API ve frontend topolojisi
+|-- Dockerfile                    # Ortak CPU-only uygulama imajı
+|-- pyproject.toml                # Paket ve test yapılandırması
 `-- README.md
 ```
 
-Generated chunks, model caches, local secrets, and Qdrant storage are excluded
-from Git.
+Üretilen chunk'lar, model önbellekleri, yerel gizli bilgiler ve Qdrant verileri
+Git kapsamı dışındadır.
 
-## Engineering decisions
+## Mühendislik kararları
 
-| Decision | Reason | Trade-off |
+| Karar | Gerekçe | Karşılığı |
 | --- | --- | --- |
-| Conservative rule-based router | Technical questions default to grounded retrieval | General-language coverage is intentionally narrow |
-| Separate dense and BM25 retrieval | Semantic and exact technical matches need different signals | Two indexes must stay aligned |
-| RRF instead of raw-score mixing | Cosine and BM25 scores are not directly comparable | Rank information is used instead of calibrated fusion |
-| Cross-encoder after fusion | Expensive scoring is limited to a small candidate pool | Adds latency to knowledge requests |
-| Retrieval-owned citations | Prevents the model from inventing public source metadata | Invalid model output is rejected rather than repaired silently |
-| Lazy knowledge pipeline | General messages do not load models or contact Qdrant | First technical request carries setup latency |
-| Project-local caches and bind mounts | Large artifacts stay on the repository drive | Local disk management remains the operator's responsibility |
-| Optional fail-open tracing | Observability cannot break user requests | Export failures may require log inspection |
-| Offline deterministic tests | CI is free, repeatable, and secretless | Model quality is measured separately by the benchmark |
-| Honest metric failures | Undefined/failed RAGAS outcomes are not reported as zero | Aggregate tables need scored-count context |
+| Tutucu, kural tabanlı yönlendirici | Teknik sorular varsayılan olarak kaynaklı getirim kullanır | Genel dil kapsamı bilinçli olarak sınırlıdır |
+| Ayrı dense ve BM25 getirim | Anlamsal ve birebir teknik eşleşmeler farklı sinyaller gerektirir | İki indeksin uyumlu tutulması gerekir |
+| Ham skor karışımı yerine RRF | Cosine ve BM25 skorları doğrudan karşılaştırılamaz | Kalibre birleşim yerine sıralama bilgisi kullanılır |
+| Birleştirmeden sonra cross-encoder | Maliyetli skor yalnızca küçük aday havuzuna uygulanır | Bilgi tabanı isteklerine gecikme ekler |
+| Getirim katmanına ait atıflar | Modelin herkese açık kaynak metadatası uydurmasını önler | Geçersiz model çıktısı sessizce düzeltilmez, reddedilir |
+| Lazy bilgi tabanı pipeline'ı | Genel mesajlar model yüklemez veya Qdrant'a bağlanmaz | İlk teknik istek kurulum gecikmesini taşır |
+| Proje içi önbellek ve bind mount | Büyük dosyalar proje sürücüsünde kalır | Yerel disk yönetimi operatör sorumluluğundadır |
+| İsteğe bağlı fail-open izleme | Gözlemlenebilirlik kullanıcı isteğini bozamaz | Export hataları için log incelemesi gerekebilir |
+| Çevrimdışı deterministik testler | CI ücretsiz, tekrarlanabilir ve secretsızdır | Model kalitesi ayrı benchmark ile ölçülür |
+| Dürüst metrik hataları | Tanımsız veya başarısız RAGAS sonucu sıfır gösterilmez | Toplam tablolar skorlanan senaryo bağlamı gerektirir |
 
-## Limitations
+## Sınırlamalar
 
-- The bundled corpus contains five small operational documents; it is not a
-  large-scale knowledge platform.
-- The router is deliberately rule-based and recognizes a bounded set of clearly
-  general messages.
-- BM25 is rebuilt in memory from the processed JSONL artifact.
-- API requests are synchronous and responses are not streamed.
-- PDF ingestion supports text-based files; scanned PDFs require OCR outside the
-  current scope.
-- There is no authentication, authorization, tenant isolation, rate limiting,
-  or cloud deployment configuration.
-- Qdrant runs as a single local service; high availability and distributed
-  operations are out of scope.
-- The free `qwen3.5:2b` evaluator produced incomplete faithfulness judgments,
-  so the baseline is useful for comparison but not a gold-standard quality
-  claim.
-- `retrieval_confidence` is a relevance heuristic rather than a calibrated
-  probability.
+- Dahili koleksiyon beş küçük operasyon dokümanı içerir; büyük ölçekli bir bilgi
+  platformu değildir.
+- Yönlendirici bilinçli olarak kural tabanlıdır ve sınırlı sayıdaki açık genel
+  mesajı tanır.
+- BM25 indeksi, işlenmiş JSONL çıktısından bellekte yeniden oluşturulur.
+- API istekleri senkrondur ve cevaplar stream edilmez.
+- PDF veri alımı metin tabanlı dosyaları destekler; taranmış PDF'ler mevcut
+  kapsamın dışında OCR gerektirir.
+- Kimlik doğrulama, yetkilendirme, tenant ayrımı, rate limiting veya cloud
+  deployment yapılandırması bulunmaz.
+- Qdrant tek bir yerel servis olarak çalışır; high availability ve dağıtık
+  operasyonlar kapsam dışıdır.
+- Ücretsiz `qwen3.5:2b` değerlendirme modeli eksik faithfulness kararları
+  üretmiştir. Bu nedenle temel sonuç karşılaştırma için yararlı olsa da altın
+  standart kalite iddiası değildir.
+- `retrieval_confidence` kalibre edilmiş bir olasılık değil, ilgililik
+  sezgisidir.
 
-## Future improvements
+## Gelecek geliştirmeler
 
-- Expand the corpus and create a larger human-reviewed evaluation set.
-- Repeat evaluation with a stronger judge and compare confidence intervals.
-- Add metadata filtering and persistent sparse indexing for larger collections.
-- Add token streaming and asynchronous model calls.
-- Add authentication, rate limiting, and per-tenant collections before
-  exposing the service beyond localhost.
-- Add OCR for scanned documents and richer ingestion formats.
-- Calibrate retrieval confidence against labeled relevance judgments.
-- Add deployment profiles only when a real target environment is selected.
+- Doküman koleksiyonunu ve insan incelemesinden geçmiş değerlendirme setini büyütmek
+- Daha güçlü bir hakemle değerlendirmeyi tekrarlamak ve güven aralıklarını karşılaştırmak
+- Büyük koleksiyonlar için metadata filtreleme ve kalıcı sparse indeks eklemek
+- Token streaming ve asenkron model çağrıları eklemek
+- Servisi localhost dışına açmadan önce kimlik doğrulama, rate limiting ve
+  tenant bazlı koleksiyonlar eklemek
+- Taranmış dokümanlar ve daha zengin formatlar için OCR eklemek
+- Getirim güven skorunu etiketli ilgililik kararlarıyla kalibre etmek
+- Yalnızca gerçek bir hedef ortam seçildiğinde deployment profilleri eklemek
 
-## Further documentation
+## Ek dokümantasyon
 
-- [Architecture](docs/architecture.md)
-- [Evaluation methodology and schemas](evaluation/README.md)
-- [Step-by-step project specification](OPSRAG_PROJECT_PLAN.md)
+- [Mimari](docs/architecture.md)
+- [Değerlendirme yöntemi ve şemaları](evaluation/README.md)
+- [Adım adım proje tanımı](OPSRAG_PROJECT_PLAN.md)
